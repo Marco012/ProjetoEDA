@@ -20,8 +20,10 @@ int main(char* args) {
 
     list_t *operations = &(job.operations);
 
+    job_load_file(&job, "job.csv");
+
     LIST_START_ITERATION(operations, operation_t, value) {
-        printf("%d", value->duration);
+        printf("%d,", value->duration);
     }
     LIST_END_ITERATION()
 

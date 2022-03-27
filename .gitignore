@@ -44,3 +44,4 @@ _deps
 build
 
 # End of https://www.toptal.com/developers/gitignore/api/cmake,visualstudiocode
+.vscode/settings.json

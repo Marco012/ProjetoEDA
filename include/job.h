@@ -19,4 +19,6 @@ void job_remove_operation(job_t *job, int index);
 
 void job_set_operation(job_t *job, int index, operation_t operation);
 
+bool job_load_file(job_t *job, const char *file_name);
+
 #endif

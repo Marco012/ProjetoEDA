@@ -39,6 +39,8 @@ _deps
 .history
 .ionide
 
+.vs
+
 # Support for Project snippet scope
 
 build

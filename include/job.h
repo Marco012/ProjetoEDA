@@ -7,18 +7,18 @@
 
 
 typedef struct {
-    list_t operations;
+	list_t operations;
 } job_t;
 
 
 job_t job_new();
 
-void job_add_operation(job_t *job, operation_t operation);
+operation_t* job_new_operation(job_t* job);
 
-void job_remove_operation(job_t *job, int index);
+void job_remove_operation(job_t* job, int index);
 
-void job_set_operation(job_t *job, int index, operation_t operation);
+void job_set_operation(job_t* job, int index, operation_t operation);
 
-bool job_load_file(job_t *job, const char *file_name);
+bool job_load_file(job_t* job, const char* file_name);
 
 #endif

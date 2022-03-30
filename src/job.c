@@ -1,45 +1,57 @@
 #include "job.h"
 #include <stdio.h>
+#include <inttypes.h>
 
 
 job_t job_new() {
-    job_t job;
-    job.operations = list_new();
+	job_t job;
+	job.operations = list_new();
 
-    return job;
+	return job;
 }
 
 
-void job_add_operation(job_t *job, operation_t operation) {
-    list_push(&job->operations, &operation, sizeof(operation));
+operation_t* job_new_operation(job_t* job) {
+	operation_t operation;
+	operation.executions = list_new();
+	operation_t* operation_ptr = list_push(&job->operations, &operation, sizeof(operation));
+	return operation_ptr;
 }
 
 
-void job_remove_operation(job_t *job, int index) {
-    list_remove(&job->operations, index);
+void job_remove_operation(job_t* job, int index) {
+	list_remove(&job->operations, index);
 }
 
 
-void job_set_operation(job_t *job, int index, operation_t operation) {
-    if (list_remove(&job->operations, index))
-        list_insert(&job->operations, &operation, sizeof(operation_t), index, false);
+void job_set_operation(job_t* job, int index, operation_t operation) {
+	if (list_remove(&job->operations, index))
+		list_insert(&job->operations, &operation, sizeof(operation_t), index, false);
 }
 
 
-bool job_load_file(job_t *job, const char *file_name) {
-    FILE *file = fopen(file_name, "r");
+bool job_load_file(job_t* job, const char* file_name) {
+	FILE* file = fopen(file_name, "r");
 
-    if (file == NULL)
-        return false;
+	if (file == NULL)
+		return false;
 
-    operation_t operation;
+	operation_t* operation = job_new_operation(job);
 
-    while(!feof(file)) { 
-        fscanf(file, "%d,%d", &operation.duration, &operation.machine);
-        job_add_operation(job, operation);
-    }
+	char buffer[256];
 
-    fclose(file);
+	while (fgets(buffer, 256, file)) {
+		if (buffer[0] == '-') {
+			operation = job_new_operation(job);
+			continue;
+		}
 
-    return true;
+		machine_execution_t execution;
+		sscanf(buffer, "%" SCNu16 ",%" SCNu16 "\n", &execution.duration, &execution.machine);
+		operation_add_execution(operation, execution);
+	}
+
+	fclose(file);
+
+	return true;
 }

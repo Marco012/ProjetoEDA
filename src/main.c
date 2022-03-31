@@ -137,6 +137,8 @@ int main(void) {
 
 	test_print_job_operations(&job);
 
+	job_save_file(&job, "out.csv");
+
 	LIST_START_ITERATION((&job.operations), operation_t, operation) {
 		list_t* executions = &(operation->executions);
 		list_clear(executions);

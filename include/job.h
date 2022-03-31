@@ -21,4 +21,6 @@ void job_set_operation(job_t* job, int index, operation_t operation);
 
 bool job_load_file(job_t* job, const char* file_name);
 
+void job_save_file(job_t* job, const char* file_name);
+
 #endif

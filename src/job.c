@@ -55,3 +55,25 @@ bool job_load_file(job_t* job, const char* file_name) {
 
 	return true;
 }
+
+
+void job_save_file(job_t* job, const char* file_name) {
+	FILE* file = fopen(file_name, "w");
+	uint32_t i = 1;
+
+	fprintf(file, "Operation,Duration,Machine\n");
+
+	LIST_START_ITERATION((&job->operations), operation_t, operation) {
+		list_t* executions = &(operation->executions);
+
+		LIST_START_ITERATION(executions, machine_execution_t, execution) {
+			fprintf(file, "%u,%u,%u\n", i, execution->duration, execution->machine);
+		}
+		LIST_END_ITERATION;
+
+		i++;
+	}
+	LIST_END_ITERATION;
+
+	fclose(file);
+}

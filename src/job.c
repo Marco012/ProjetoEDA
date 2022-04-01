@@ -20,8 +20,8 @@ job_t job_init() {
 operation_t* job_new_operation(job_t* job) {
 	operation_t operation;
 	operation.executions = list_init(NULL);
-	operation_t* operation_ptr = list_push(&job->operations, &operation, sizeof(operation));
-	return operation_ptr;
+
+	return list_push(&job->operations, &operation, sizeof(operation));
 }
 
 
@@ -46,12 +46,15 @@ bool job_load_file(job_t* job, const char* file_name) {
 
 	char buffer[256];
 
+	// Go through each line and store it in the buffer.
 	while (fgets(buffer, 256, file)) {
+		// Check if it's creating a new operation.
 		if (buffer[0] == '-') {
 			operation = job_new_operation(job);
 			continue;
 		}
 
+		// Reads the execution and adds it into the current operation.
 		machine_execution_t execution;
 		sscanf(buffer, "%" SCNu16 ",%" SCNu16 "\n", &execution.duration, &execution.machine);
 		operation_add_execution(operation, execution);
@@ -69,9 +72,11 @@ void job_save_file(job_t* job, const char* file_name) {
 
 	fprintf(file, "Operation,Duration,Machine\n");
 
+	// Go through all the operations of the job.
 	LIST_START_ITERATION((&job->operations), operation_t, operation) {
 		list_t* executions = &(operation->executions);
 
+		// Go through all the executions fo the operation and adds a line to the file.
 		LIST_START_ITERATION(executions, machine_execution_t, execution) {
 			fprintf(file, "%u,%u,%u\n", i, execution->duration, execution->machine);
 		}

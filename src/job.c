@@ -3,9 +3,15 @@
 #include <inttypes.h>
 
 
-job_t job_new() {
+static void job_operation_free(void *value) {
+	operation_t *operation = (operation_t*) value;
+	list_clear(&operation->executions);
+}
+
+
+job_t job_init() {
 	job_t job;
-	job.operations = list_new();
+	job.operations = list_init(&job_operation_free);
 
 	return job;
 }
@@ -13,7 +19,7 @@ job_t job_new() {
 
 operation_t* job_new_operation(job_t* job) {
 	operation_t operation;
-	operation.executions = list_new();
+	operation.executions = list_init(NULL);
 	operation_t* operation_ptr = list_push(&job->operations, &operation, sizeof(operation));
 	return operation_ptr;
 }
@@ -76,4 +82,9 @@ void job_save_file(job_t* job, const char* file_name) {
 	LIST_END_ITERATION;
 
 	fclose(file);
+}
+
+
+void job_clear(job_t* job) {
+	list_clear(&job->operations);
 }

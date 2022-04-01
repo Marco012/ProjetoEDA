@@ -4,8 +4,6 @@
 #include "list.h"
 #include "tests.h"
 
-#define TESTS_ENABLED
-
 
 #define FILTER_MIN 0b00000111
 #define FILTER_MAX 0b00001111
@@ -22,7 +20,7 @@ void get_job_finish_filtered_operations(job_t* job, list_t* out_operation_execut
 	operation_execution_t operation_execution;
 	uint8_t i = 1;
 
-	*out_operation_executions = list_new();
+	*out_operation_executions = list_init(NULL);
 
 	LIST_START_ITERATION(operations, operation_t, operation) {
 		list_t* executions = &(operation->executions);
@@ -114,7 +112,7 @@ void job_tests(job_t* job) {
 
 	printf("Changed the value of the 2nd execution in the operation in the middle.\n");
 	machine_execution_t execution = { .machine = 88, .duration = 99 };
-	test_job_set_operaton(job, 1, 1, execution);
+	test_job_set_operaton_execution(job, 1, 1, execution);
 	test_print_job_operations(job);
 
 	printf("Removed the operation in the middle.\n");
@@ -125,7 +123,7 @@ void job_tests(job_t* job) {
 
 
 int main(void) {
-	job_t job = job_new();
+	job_t job = job_init();
 
 	job_tests(&job);
 
@@ -139,12 +137,7 @@ int main(void) {
 
 	job_save_file(&job, "out.csv");
 
-	LIST_START_ITERATION((&job.operations), operation_t, operation) {
-		list_t* executions = &(operation->executions);
-		list_clear(executions);
-	}
-	LIST_END_ITERATION;
-	list_clear(&job.operations);
+	job_clear(&job);
 
 	return 0;
 }

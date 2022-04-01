@@ -46,7 +46,7 @@ void test_job_remove_operaton(job_t* job, uint32_t operation_index) {
 }
 
 
-void test_job_set_operaton(job_t* job, uint32_t operation_index, uint32_t execution_index, machine_execution_t execution) {
+void test_job_set_operaton_execution(job_t* job, uint32_t operation_index, uint32_t execution_index, machine_execution_t execution) {
 	list_t* executions = list_get(&job->operations, operation_index);
 
 	if (executions != NULL) {

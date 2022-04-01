@@ -2,8 +2,8 @@
 #include "operation.h"
 
 
-list_t list_new() {
-	return (list_t) { .first = NULL, .last = NULL };
+list_t list_init(void (*free_fn)(void* value)) {
+	return (list_t) { .first = NULL, .last = NULL, .free_fn = free_fn };
 }
 
 
@@ -133,6 +133,12 @@ void list_clear(list_t* list) {
 
 	while (next != NULL) {
 		temp = next->next;
+
+		if (list->free_fn)
+			list->free_fn(next->value);
+		else
+			free(next->value);
+		
 		free((void*) next);
 		next = temp;
 	}
@@ -146,7 +152,7 @@ void list_print_int(list_t* list) {
 	list_element_t* next = list->first;
 
 	while (next != NULL) {
-		printf("%d,", *(next + sizeof(list_element_t)));
+		printf("%d,", *((int32_t*) next->value));
 		next = next->next;
 	}
 }

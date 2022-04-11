@@ -4,6 +4,7 @@
 #include "job_utils.h"
 #include "list.h"
 #include "tests.h"
+#include <inttypes.h>
 
 
 void job_tests(job_t* job) {
@@ -28,6 +29,31 @@ void job_tests(job_t* job) {
 }
 
 
+void userAddOperationMachineToJob(job_t* job) {
+	machine_execution_t execution;
+
+	printf("Select an operation: \n");
+
+	uint32_t i = 1;
+	LIST_START_ITERATION((&job->operations), operation_t, operation) {
+		printf(" > %u\n", i);
+		i++;
+	}
+	LIST_END_ITERATION;
+
+	printf("--New operation--\n");
+	printf(" > Machine: ");
+	scanf("%" SCNu16, &execution.machine);
+	printf(" > Duration: ");
+	scanf("%" SCNu16, &execution.duration);
+}
+
+
+void userAddOperationToJob(job_t *job) {
+	job_new_operation(job);
+}
+
+
 int main(void) {
 	job_t job = job_init();
 
@@ -38,6 +64,9 @@ int main(void) {
 	print_job_finish_min_time(&job);
 	print_job_finish_max_time(&job);
 	print_job_finish_operation_average_time(&job, 0);
+
+	userAddOperationToJob(&job);
+	userAddOperationMachineToJob(&job);
 
 	test_print_job_operations(&job);
 

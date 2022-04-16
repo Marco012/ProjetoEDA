@@ -5,9 +5,11 @@
 #include "list.h"
 #include "tests.h"
 #include <inttypes.h>
+#include <gui/gui.h>
 
 
 void job_tests(job_t* job) {
+
 	// Add operations into the job.
 	test_job_add_operation(job, 1);
 	test_job_add_operation(job, 2);
@@ -49,12 +51,59 @@ void userAddOperationMachineToJob(job_t* job) {
 }
 
 
-void userAddOperationToJob(job_t *job) {
+void userAddOperationToJob(job_t* job) {
 	job_new_operation(job);
 }
 
 
+void ui_draw(window_t* window) {
+	float menu_width = 200;
+
+	gui_start_menu();
+	{
+		gui_draw_title_centered("Menu");
+		gui_draw_spacing();
+		gui_draw_button("Jobs", menu_width);
+		gui_draw_button("Min Time", menu_width);
+		gui_draw_button("Max Time", menu_width);
+		gui_draw_button("Average Time", menu_width);
+		gui_draw_spacing();
+		gui_draw_spacing();
+
+		if (gui_draw_button("Quit", menu_width))
+			window_close(window);
+
+		gui_draw_spacing();
+	}
+	gui_end_menu(menu_width);
+}
+
+
+void test_window() {
+	window_t* window;
+
+	if (!window_init()) {
+		printf("Error initiating rendering context. Aborting.");
+		return -1;
+	}
+
+	window = window_create();
+
+	if (window == NULL) {
+		printf("Error opening window. Aborting.");
+		return -1;
+	}
+
+	while (window_render(window, ui_draw));
+
+	window_destroy(window);
+}
+
+
 int main(void) {
+
+	test_window();
+
 	job_t job = job_init();
 
 	job_tests(&job);

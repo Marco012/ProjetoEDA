@@ -1,3 +1,4 @@
+#include <gui/gui.h>
 #include <gui/internal/gui.h>
 #include "font.h"
 
@@ -39,6 +40,15 @@ static void window_apply_imgui_style(GLFWwindow* window)
 	defaultConfig.FontDataOwnedByAtlas = false;
 	auto font_lato = ImGui::GetIO().Fonts->AddFontFromMemoryTTF(FONT_LATO, FONT_LATO_LENGTH, 16.0f, &defaultConfig);
 
+	static const ImWchar icons_ranges[] = { ICON_MIN_FA, ICON_MAX_FA, 0 };
+	ImFontConfig configIcons;
+	configIcons.FontDataOwnedByAtlas = false;
+	configIcons.MergeMode = true;
+	//configIcons.PixelSnapH = true;
+	configIcons.GlyphMinAdvanceX = 16.0f; // Use if you want to make the icon monospaced
+	ImGui::GetIO().Fonts->AddFontFromMemoryTTF(FONT_ICONS_SOLID, FONT_ICONS_SOLID_LENGTH, 16.0f, &configIcons, icons_ranges);
+
+
 	ImFontConfig titleConfig;
 	titleConfig.FontDataOwnedByAtlas = false;
 	title_font = ImGui::GetIO().Fonts->AddFontFromMemoryTTF(FONT_LATO, FONT_LATO_LENGTH, 20.0f, &titleConfig);
@@ -53,7 +63,7 @@ static void window_apply_imgui_style(GLFWwindow* window)
 	style->FramePadding = ImVec2(12, 4);
 	style->ItemInnerSpacing = ImVec2(5, 5);
 	style->ScrollbarSize = 14;
-	style->WindowMenuButtonPosition = ImGuiDir_Right;
+	style->WindowMenuButtonPosition = ImGuiDir_Left;
 
 	style->Colors[ImGuiCol_Text] = textColor;
 	style->Colors[ImGuiCol_TextDisabled] = textColorDisabled;
@@ -237,6 +247,8 @@ int window_render(window_t* window, void (*fn_draw) (window_t*)) {
 
 	if (fn_draw != nullptr)
 		fn_draw(window);
+
+	gui_render_views();
 
 	/*
 

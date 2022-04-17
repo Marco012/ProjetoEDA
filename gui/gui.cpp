@@ -1,6 +1,7 @@
 #include <gui/internal/gui.h>
 #include <imgui/imgui.h>
 #include <GLFW/glfw3.h>
+#include <string>
 
 
 static GLFWwindow* g_window;
@@ -18,6 +19,12 @@ void gui_draw_spacing() {
 
 bool gui_draw_button(char* text, float width) {
 	return ImGui::Button(text, ImVec2(width - WINDOW_PADDING_TOTAL, 30));
+}
+
+
+bool gui_draw_button_fill(char* text) {
+	float width = ImGui::GetWindowWidth();
+	return gui_draw_button(text, width);
 }
 
 
@@ -49,6 +56,16 @@ void gui_draw_title_centered(const char* text) {
 	ImGui::PushFont(title_font);
 	gui_draw_text_centered(text);
 	ImGui::PopFont();
+}
+
+
+bool gui_start_page(char* title, bool *show) {
+	return ImGui::Begin(title, show);
+}
+
+
+void gui_end_page() {
+	ImGui::End();
 }
 
 

@@ -1,11 +1,16 @@
+#include <utils.h>
+#include <job.h>
+#include <job_utils.h>
+#include <list.h>
+#include <tests.h>
+#include <views.h>
+
 #include <stdio.h>
-#include "utils.h"
-#include "job.h"
-#include "job_utils.h"
-#include "list.h"
-#include "tests.h"
 #include <inttypes.h>
 #include <gui/gui.h>
+
+
+list_t jobs;
 
 
 void job_tests(job_t* job) {
@@ -51,11 +56,6 @@ void userAddOperationMachineToJob(job_t* job) {
 }
 
 
-void userAddOperationToJob(job_t* job) {
-	job_new_operation(job);
-}
-
-
 void ui_draw(window_t* window) {
 	float menu_width = 200;
 
@@ -63,10 +63,19 @@ void ui_draw(window_t* window) {
 	{
 		gui_draw_title_centered("Menu");
 		gui_draw_spacing();
-		gui_draw_button("Jobs", menu_width);
-		gui_draw_button("Min Time", menu_width);
-		gui_draw_button("Max Time", menu_width);
-		gui_draw_button("Average Time", menu_width);
+
+		if (gui_draw_button(VIEW_TITLE_JOBS, menu_width))
+			gui_open_view(VIEW_TITLE_JOBS);
+
+		if (gui_draw_button(VIEW_TITLE_MIN_TIME, menu_width))
+			gui_open_view(VIEW_TITLE_MIN_TIME);
+
+		if (gui_draw_button(VIEW_TITLE_MAX_TIME, menu_width))
+			gui_open_view(VIEW_TITLE_MAX_TIME);
+
+		if (gui_draw_button(VIEW_TITLE_AVERAGE_TIME, menu_width))
+			gui_open_view(VIEW_TITLE_AVERAGE_TIME);
+
 		gui_draw_spacing();
 		gui_draw_spacing();
 
@@ -75,6 +84,7 @@ void ui_draw(window_t* window) {
 
 		gui_draw_spacing();
 	}
+
 	gui_end_menu(menu_width);
 }
 
@@ -86,7 +96,7 @@ void test_window() {
 		printf("Error initiating rendering context. Aborting.");
 		return -1;
 	}
-
+	
 	window = window_create();
 
 	if (window == NULL) {
@@ -102,19 +112,22 @@ void test_window() {
 
 int main(void) {
 
-	test_window();
+	gui_register_view(VIEW_TITLE_JOBS, NULL, view_render_jobs, NULL);
 
 	job_t job = job_init();
+	job_load_file(&job, "job.csv");
+	jobs_insert(&job);
+
+	test_window();
+
 
 	job_tests(&job);
 
-	job_load_file(&job, "job.csv");
 
 	print_job_finish_min_time(&job);
 	print_job_finish_max_time(&job);
 	print_job_finish_operation_average_time(&job, 0);
 
-	userAddOperationToJob(&job);
 	userAddOperationMachineToJob(&job);
 
 	test_print_job_operations(&job);

@@ -74,6 +74,11 @@ void gui_draw_title_centered(const char* text) {
 }
 
 
+void gui_draw_input_uint16(const char* text, uint16_t* value) {
+	ImGui::InputScalar(text, ImGuiDataType_U16, value);
+}
+
+
 bool gui_draw_collapsing_header(const char* text) {
 	return ImGui::CollapsingHeader(text);
 }

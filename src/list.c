@@ -98,9 +98,22 @@ bool list_insert(list_t* list, void* value, uint32_t size, int index, bool force
 }
 
 
+static void list_free_element(list_t* list, list_element_t* element) {
+	if (list->free_fn)
+		list->free_fn(element->value);
+	else
+		free(element->value);
+
+	free((void*)element);
+}
+
+
 bool list_remove(list_t* list, int index) {
 	list_element_t* element = list->first;
 	list_element_t* previous = NULL;
+
+	if (index < 0)
+		return false;
 
 	for (int i = 0; i < index; i++) {
 		previous = element;
@@ -115,8 +128,13 @@ bool list_remove(list_t* list, int index) {
 	if (element == list->first)
 		list->first = next;
 
+	if (element == list->last)
+		list->last = previous;
+
 	if (previous != NULL)
 		previous->next = element->next;
+
+	list_free_element(list, element);
 
 	return true;
 }
@@ -130,12 +148,7 @@ void list_clear(list_t* list) {
 	while (next != NULL) {
 		temp = next->next;
 
-		if (list->free_fn)
-			list->free_fn(next->value);
-		else
-			free(next->value);
-		
-		free((void*) next);
+		list_free_element(list, next);
 		next = temp;
 	}
 

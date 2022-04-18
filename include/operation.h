@@ -27,6 +27,7 @@ typedef struct {
  */
 bool operation_add_execution(operation_t* operation, machine_execution_t execution);
 
+bool operation_set_execution(operation_t* operation, uint32_t index, machine_execution_t execution);
 
 bool operation_remove_execution(operation_t* operation, uint32_t index);
 

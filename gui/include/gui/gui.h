@@ -4,6 +4,7 @@
 #include "window.h"
 #include "view.h"
 #include "font_icons.h"
+#include <inttypes.h>
 
 
 void gui_init_draw(void* window);
@@ -30,6 +31,8 @@ void gui_draw_text_centered(const char* text);
 
 void gui_draw_title(const char* text);
 void gui_draw_title_centered(const char* text);
+
+void gui_draw_input_uint16(const char* text, uint16_t* value);
 
 bool gui_draw_collapsing_header(const char* text);
 

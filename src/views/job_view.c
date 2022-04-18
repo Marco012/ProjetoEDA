@@ -3,11 +3,18 @@
 
 #define POPUP_TITLE_DELETE_OPERATON "Delete Operaton"
 #define POPUP_TITLE_DELETE_EXECUTION "Delete Execution"
+#define POPUP_TITLE_ADD_EXECUTION "Add Execution"
+#define POPUP_TITLE_EDIT_EXECUTION "Edit Execution"
+#define POPUP_TITLE_EXECUTION_MACHINE_REPEATED "Repeated Machine"
 #define STRING_OPERATION_TITLE(str, index) sprintf(str, "Operation %d", index + 1)
 
 
+
 operation_t* selected_operation;
-int delete_index;
+int selected_index; // Used to store the id of operation and execution when deleting or editing.
+
+machine_execution_t editing_execution;
+bool open_popup_machine_repeated = false;
 
 
 void view_open_job(job_t* job) {
@@ -21,16 +28,13 @@ static void view_opening(view_t* view, void* param) {
 
 
 static void render_popup_delete_operation(job_t* job) {
-	const char temp[32];
-
 	if (gui_begin_popup(POPUP_TITLE_DELETE_OPERATON)) {
 		gui_draw_text("Are you sure you want to delete it?");
 
 		gui_columns(2);
 		if (gui_draw_button_fill("Yes"))
 		{
-			STRING_OPERATION_TITLE(temp, delete_index);
-			job_remove_operation(job, delete_index);
+			job_remove_operation(job, selected_index);
 			gui_close_popup();
 		}
 		gui_next_column();
@@ -43,16 +47,13 @@ static void render_popup_delete_operation(job_t* job) {
 
 
 static void render_popup_delete_execution() {
-	const char temp[32];
-
 	if (gui_begin_popup(POPUP_TITLE_DELETE_EXECUTION)) {
 		gui_draw_text("Are you sure you want to delete it?");
 
 		gui_columns(2);
 		if (gui_draw_button_fill("Yes"))
 		{
-			STRING_OPERATION_TITLE(temp, delete_index);
-			operation_remove_execution(selected_operation, delete_index);
+			operation_remove_execution(selected_operation, selected_index);
 			gui_close_popup();
 		}
 		gui_next_column();
@@ -61,6 +62,60 @@ static void render_popup_delete_execution() {
 
 		gui_end_popup();
 	}
+}
+
+
+static void render_popup_add_or_edit_execution() {
+	if (gui_begin_popup(POPUP_TITLE_ADD_EXECUTION) || (gui_begin_popup(POPUP_TITLE_EDIT_EXECUTION))) {
+		
+		gui_draw_text("%-20s", "Machine:");
+		gui_sameline();
+		gui_draw_input_uint16("##Machine", &(editing_execution.machine));
+		gui_draw_text("%-20s", "Duration:");
+		gui_sameline();
+		gui_draw_input_uint16("##Duration", &(editing_execution.duration));
+
+		gui_columns(2);
+		if (gui_draw_button_fill("Save"))
+		{
+			gui_close_popup();
+
+			if (selected_index == -1) {
+				if (!operation_add_execution(selected_operation, editing_execution))
+				{
+					gui_close_popup();
+					open_popup_machine_repeated = true;
+				}
+			}
+			else {
+				if (!operation_set_execution(selected_operation, selected_index, editing_execution))
+				{
+					gui_close_popup();
+					open_popup_machine_repeated = true;
+				}
+			}
+
+		}
+
+		gui_next_column();
+		if (gui_draw_button_fill("Cancel"))
+			gui_close_popup();
+
+		gui_end_popup();
+	}
+}
+
+
+static void render_popup_execution_machine_repeated() {
+	if (!gui_begin_popup(POPUP_TITLE_EXECUTION_MACHINE_REPEATED))
+		return;
+
+	gui_draw_text("This operation already contains an execution on this machine.");
+
+	if (gui_draw_button_fill("Ok"))
+		gui_close_popup();
+
+	gui_end_popup();
 }
 
 
@@ -86,7 +141,7 @@ static void view_render(view_t* view, void* param, void* data) {
 
 		if (gui_draw_button(temp)) {
 			gui_open_popup(POPUP_TITLE_DELETE_OPERATON);
-			delete_index = i;
+			selected_index = i;
 		}
 		gui_sameline();
 
@@ -94,6 +149,20 @@ static void view_render(view_t* view, void* param, void* data) {
 
 		MARGIN_X_3();
 		if (gui_draw_collapsing_header(temp)) {
+
+			MARGIN_X_4();
+			sprintf(temp, ICON_FA_PLUS "##%d", i);
+			if (gui_draw_button_fill(temp)) {
+				editing_execution.duration = 0;
+				editing_execution.machine = 0;
+				selected_operation = operation;
+				selected_index = -1;
+				gui_open_popup(POPUP_TITLE_ADD_EXECUTION);
+			}
+
+			gui_draw_spacing();
+			gui_draw_spacing();
+
 			j = 0;
 			operation_total_duration = 0;
 			LIST_START_ITERATION((&operation->executions), machine_execution_t, execution) {
@@ -106,15 +175,22 @@ static void view_render(view_t* view, void* param, void* data) {
 					MARGIN_X_5();
 					gui_draw_text("Duration: %ds", execution->duration);
 					MARGIN_X_5();
-					gui_draw_button(ICON_FA_EDIT);
+
+					sprintf(temp, ICON_FA_EDIT "##%d%d", i, j);
+					if (gui_draw_button(temp)) {
+						editing_execution.machine = execution->machine;
+						editing_execution.duration = execution->duration;
+						selected_index = j;
+						selected_operation = operation;
+						gui_open_popup(POPUP_TITLE_EDIT_EXECUTION);
+					}
 					gui_sameline();
 
 					sprintf(temp, ICON_FA_TRASH "##%d%d", i, j);
-
 					if (gui_draw_button(temp)) {
-						gui_open_popup(POPUP_TITLE_DELETE_EXECUTION);
-						delete_index = j;
+						selected_index = j;
 						selected_operation = operation;
+						gui_open_popup(POPUP_TITLE_DELETE_EXECUTION);
 					}
 
 					gui_draw_spacing();
@@ -136,8 +212,15 @@ static void view_render(view_t* view, void* param, void* data) {
 	}
 	LIST_END_ITERATION;
 
+	if (open_popup_machine_repeated) {
+		gui_open_popup(POPUP_TITLE_EXECUTION_MACHINE_REPEATED);
+		open_popup_machine_repeated = false;
+	}
+
 	render_popup_delete_operation(job);
 	render_popup_delete_execution();
+	render_popup_add_or_edit_execution();
+	render_popup_execution_machine_repeated();
 }
 
 

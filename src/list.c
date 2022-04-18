@@ -99,28 +99,24 @@ bool list_insert(list_t* list, void* value, uint32_t size, int index, bool force
 
 
 bool list_remove(list_t* list, int index) {
-	list_element_t* element = NULL;
+	list_element_t* element = list->first;
+	list_element_t* previous = NULL;
 
 	for (int i = 0; i < index; i++) {
-		if (element == NULL)
-			element = list->first;
-		else
-			element = element->next;
+		previous = element;
+		element = element->next;
 	}
 
 	if (element == NULL)
 		return false;
 
-	if (element->next != NULL) {
-		list_element_t* next = element->next;
+	list_element_t* next = element->next;
 
-		if (next == list->last)
-			list->last = element;
+	if (element == list->first)
+		list->first = next;
 
-		if (next->next != NULL) {
-			element->next = next->next;
-		}
-	}
+	if (previous != NULL)
+		previous->next = element->next;
 
 	return true;
 }

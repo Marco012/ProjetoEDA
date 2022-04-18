@@ -12,19 +12,34 @@ void gui_init_draw(void* window) {
 }
 
 
-void gui_draw_spacing() {
+void gui_draw_spacing(void) {
 	ImGui::Spacing();
 }
 
 
-bool gui_draw_button(char* text, float width) {
-	return ImGui::Button(text, ImVec2(width - WINDOW_PADDING_TOTAL, 30));
+void gui_sameline() {
+	ImGui::SameLine();
+}
+
+
+void gui_margin_x(float margin) {
+	ImGui::SetCursorPosX(margin);
+}
+
+
+bool gui_draw_button(char* text) {
+	return ImGui::Button(text);
+}
+
+
+bool gui_draw_buttonW(char* text, float width) {
+	return ImGui::Button(text, ImVec2(width - WINDOW_PADDING_TOTAL, 0));
 }
 
 
 bool gui_draw_button_fill(char* text) {
 	float width = ImGui::GetWindowWidth();
-	return gui_draw_button(text, width);
+	return ImGui::Button(text, ImVec2(-FLT_MIN, 0));
 }
 
 
@@ -59,17 +74,53 @@ void gui_draw_title_centered(const char* text) {
 }
 
 
+bool gui_draw_collapsing_header(const char* text) {
+	return ImGui::CollapsingHeader(text);
+}
+
+
+void gui_open_popup(const char* title) {
+	ImGui::OpenPopup(title);
+}
+
+
+bool gui_begin_popup(const char* title) {
+	// == true is required because it was returning random values when true.
+	return ImGui::BeginPopupModal(title) == true;
+}
+
+
+void gui_end_popup(void) {
+	ImGui::EndPopup();
+}
+
+
+void gui_close_popup(void) {
+	ImGui::CloseCurrentPopup();
+}
+
+
+void gui_columns(int count) {
+	ImGui::Columns(count);
+}
+
+
+void gui_next_column(void) {
+	ImGui::NextColumn();
+}
+
+
 bool gui_start_page(char* title, bool *show) {
 	return ImGui::Begin(title, show);
 }
 
 
-void gui_end_page() {
+void gui_end_page(void) {
 	ImGui::End();
 }
 
 
-void gui_start_menu() {
+void gui_start_menu(void) {
 	ImGui::Begin("menu", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
 	ImGui::SetWindowSize(ImVec2(0, 0));
 }

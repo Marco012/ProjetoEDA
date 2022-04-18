@@ -64,22 +64,23 @@ void ui_draw(window_t* window) {
 		gui_draw_title_centered("Menu");
 		gui_draw_spacing();
 
-		if (gui_draw_button(VIEW_TITLE_JOBS, menu_width))
-			gui_open_view(VIEW_TITLE_JOBS);
+		if (gui_draw_button_fill(VIEW_TITLE_JOBS))
+			view_open_jobs();
 
-		if (gui_draw_button(VIEW_TITLE_MIN_TIME, menu_width))
-			gui_open_view(VIEW_TITLE_MIN_TIME);
+		if (gui_draw_button_fill(VIEW_TITLE_MIN_TIME)) {
+			job_t* job = list_get(jobs_get_all(), 0);
+			gui_open_view(VIEW_TITLE_MIN_TIME, job);
+		}
 
-		if (gui_draw_button(VIEW_TITLE_MAX_TIME, menu_width))
-			gui_open_view(VIEW_TITLE_MAX_TIME);
-
-		if (gui_draw_button(VIEW_TITLE_AVERAGE_TIME, menu_width))
-			gui_open_view(VIEW_TITLE_AVERAGE_TIME);
+		if (gui_draw_button_fill(VIEW_TITLE_MAX_TIME)) {
+			job_t* job = list_get(jobs_get_all(), 0);
+			gui_open_view(VIEW_TITLE_MAX_TIME, job);
+		}
 
 		gui_draw_spacing();
 		gui_draw_spacing();
 
-		if (gui_draw_button("Quit", menu_width))
+		if (gui_draw_button_fill("Quit"))
 			window_close(window);
 
 		gui_draw_spacing();
@@ -112,7 +113,10 @@ void test_window() {
 
 int main(void) {
 
-	gui_register_view(VIEW_TITLE_JOBS, NULL, view_render_jobs, NULL);
+	view_register_jobs();
+	view_register_job();
+	view_register_max_time();
+	view_register_min_time();
 
 	job_t job = job_init();
 	job_load_file(&job, "job.csv");

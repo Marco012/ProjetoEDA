@@ -1,12 +1,6 @@
 #include "job_utils.h"
 
 
-typedef struct {
-	uint32_t operation_id;
-	machine_execution_t execution;
-} operation_execution_t;
-
-
 void get_job_finish_filtered_operations(job_t* job, list_t* out_operation_executions, operations_filter_t filter) {
 	list_t* operations = &(job->operations);
 	operation_execution_t operation_execution;

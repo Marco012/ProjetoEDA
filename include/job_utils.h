@@ -15,6 +15,12 @@ typedef enum {
 } operations_filter_t;
 
 
+typedef struct {
+	uint32_t operation_id;
+	machine_execution_t execution;
+} operation_execution_t;
+
+
 /**
  * @brief Get the job finish filtered operations object
  * 

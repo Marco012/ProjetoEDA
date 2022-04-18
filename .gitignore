@@ -43,7 +43,7 @@ _deps
 
 # Support for Project snippet scope
 
-build
+build/*
 
 # End of https://www.toptal.com/developers/gitignore/api/cmake,visualstudiocode
 .vscode/settings.json

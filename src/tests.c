@@ -54,3 +54,25 @@ void test_job_set_operaton_execution(job_t* job, uint32_t operation_index, uint3
 		list_insert(executions, &execution, sizeof(execution), execution_index, false);
 	}
 }
+
+
+void job_tests(job_t* job) {
+
+	// Add operations into the job.
+	test_job_add_operation(job, 1);
+	test_job_add_operation(job, 2);
+	test_job_add_operation(job, 3);
+	printf("Added 3 operations.\n");
+	test_print_job_operations(job);
+
+	// Replace an execution of an operation of the job.
+	machine_execution_t execution = { .machine = 88, .duration = 99 };
+	test_job_set_operaton_execution(job, 1, 1, execution);
+	printf("Changed the value of the 2nd execution in the operation in the middle.\n");
+	test_print_job_operations(job);
+
+	// Remove an operation from the job.
+	test_job_remove_operaton(job, 1);
+	printf("Removed the operation in the middle.\n");
+	test_print_job_operations(job);
+}

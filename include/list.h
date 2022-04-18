@@ -31,8 +31,8 @@
 
 typedef struct
 {
-	void* next; ///* Pointer to the next element.
-	void* value; ///* Pointer to the value of the element.
+	void* next; ///< Pointer to the next element.
+	void* value; ///< Pointer to the value of the element.
 } list_element_t;
 
 

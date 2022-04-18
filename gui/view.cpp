@@ -61,6 +61,7 @@ void gui_render_views() {
 		view_t* view = it->second;
 		bool is_showing = true;
 
+		// If the view is opening, call its opening function and set its state to opened.
 		if (view->state == VIEW_STATE_OPENING) {
 			if (view->fn_opening)
 				view->data = view->fn_opening(view, view->param);
@@ -68,6 +69,7 @@ void gui_render_views() {
 			view->state = VIEW_STATE_OPENED;
 		}
 
+		// If the view is opened it will be rendered.
 		if (view->state == VIEW_STATE_OPENED) {
 			ImGui::SetNextWindowSize(ImVec2(VIEW_DEFAULT_WIDTH, VIEW_DEFAULT_HEIGHT), ImGuiCond_FirstUseEver);
 
@@ -82,6 +84,7 @@ void gui_render_views() {
 				view->state = VIEW_STATE_CLOSING;
 		}
 		
+		// If the view is being closed, call its closing function and set its state to closed.
 		if (view->state == VIEW_STATE_CLOSING) {
 			if (view->fn_closing)
 				view->fn_closing(view, view->param, view->data);

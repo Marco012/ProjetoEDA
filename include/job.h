@@ -62,6 +62,10 @@ bool job_load_file(job_t* job, const char* file_name);
  */
 void job_save_file(job_t* job, const char* file_name);
 
+/**
+ * @brief Clears a job and all his memory used, including its operations.
+ * @param job Job to be cleared.
+*/
 void job_clear(job_t* job);
 
 #endif

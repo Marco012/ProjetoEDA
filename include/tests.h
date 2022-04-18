@@ -39,4 +39,11 @@ void test_job_remove_operaton(job_t* job, uint32_t operation_index);
  */
 void test_job_set_operaton_execution(job_t* job, uint32_t operation_index, uint32_t execution_index, machine_execution_t execution);
 
+
+/**
+ * @brief Executes a series of functions in a job.
+ * @param job Job to test stuff.
+*/
+void job_tests(job_t* job);
+
 #endif

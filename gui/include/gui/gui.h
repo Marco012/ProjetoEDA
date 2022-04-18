@@ -7,6 +7,10 @@
 #include <inttypes.h>
 
 
+/**
+ * @brief USED INTERNALLY.
+ * @param window GLFW window to be set as the global window used by the GUI stuff.
+*/
 void gui_init_draw(void* window);
 
 
@@ -14,6 +18,7 @@ void gui_init_draw(void* window);
 extern "C" {
 #endif
 
+// Bascially, all the functions bellow are a wrapper to the ImGui API.
 
 void gui_start_menu(void);
 void gui_end_menu(float width);

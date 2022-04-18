@@ -9,12 +9,11 @@
 #define STRING_OPERATION_TITLE(str, index) sprintf(str, "Operation %d", index + 1)
 
 
-
 operation_t* selected_operation;
 int selected_index; // Used to store the id of operation and execution when deleting or editing.
 
 machine_execution_t editing_execution;
-bool open_popup_machine_repeated = false;
+bool open_popup_machine_repeated = false; // Needed because ImGui cannot show popups in popups ):
 
 
 void view_open_job(job_t* job) {
@@ -129,8 +128,8 @@ static void view_render(view_t* view, void* param, void* data) {
 	if (gui_draw_button_fill("Save to file 'out.csv'"))
 		job_save_file(job, "out.csv");
 
+	// Draws and handles the Add Operation into job button.
 	gui_draw_title("Operations:");
-
 	if (gui_draw_button_fill(ICON_FA_PLUS)) {
 		job_new_operation(job);
 	}
@@ -140,8 +139,8 @@ static void view_render(view_t* view, void* param, void* data) {
 
 	LIST_START_ITERATION((&job->operations), operation_t, operation) {
 
+		// Draws and handles the Delete Operation button.
 		sprintf(temp, ICON_FA_TRASH "##%d", i);
-
 		if (gui_draw_button(temp)) {
 			gui_open_popup(POPUP_TITLE_DELETE_OPERATON);
 			selected_index = i;
@@ -150,10 +149,13 @@ static void view_render(view_t* view, void* param, void* data) {
 
 		STRING_OPERATION_TITLE(temp, i);
 
+		// Draws the collapsing header of the operation.
 		MARGIN_X_3();
 		if (gui_draw_collapsing_header(temp)) {
 
 			MARGIN_X_4();
+
+			// Draws the button to add a new execution into the operation.
 			sprintf(temp, ICON_FA_PLUS "##%d", i);
 			if (gui_draw_button_fill(temp)) {
 				editing_execution.duration = 0;
@@ -171,6 +173,7 @@ static void view_render(view_t* view, void* param, void* data) {
 			LIST_START_ITERATION((&operation->executions), machine_execution_t, execution) {
 				sprintf(temp, "Execution %d##%d%d", j + 1, i, execution->machine);
 
+				// Draws the collapsing header of the execution in the operation.
 				MARGIN_X_4();
 				if (gui_draw_collapsing_header(temp)) {
 					MARGIN_X_5();
@@ -179,6 +182,7 @@ static void view_render(view_t* view, void* param, void* data) {
 					gui_draw_text("Duration: %ds", execution->duration);
 					MARGIN_X_5();
 
+					// Draws the button to edit the execution in the operation.
 					sprintf(temp, ICON_FA_EDIT "##%d%d", i, j);
 					if (gui_draw_button(temp)) {
 						editing_execution.machine = execution->machine;
@@ -189,6 +193,7 @@ static void view_render(view_t* view, void* param, void* data) {
 					}
 					gui_sameline();
 
+					// Draws the button to remove the execution from the operation.
 					sprintf(temp, ICON_FA_TRASH "##%d%d", i, j);
 					if (gui_draw_button(temp)) {
 						selected_index = j;
@@ -215,6 +220,7 @@ static void view_render(view_t* view, void* param, void* data) {
 	}
 	LIST_END_ITERATION;
 
+	// This is used to show a popup when an edited or added execution already exists with the same machine.
 	if (open_popup_machine_repeated) {
 		gui_open_popup(POPUP_TITLE_EXECUTION_MACHINE_REPEATED);
 		open_popup_machine_repeated = false;

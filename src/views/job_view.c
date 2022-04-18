@@ -126,6 +126,9 @@ static void view_render(view_t* view, void* param, void* data) {
 	uint32_t j = 0;
 	uint32_t operation_total_duration = 0;
 
+	if (gui_draw_button_fill("Save to file 'out.csv'"))
+		job_save_file(job, "out.csv");
+
 	gui_draw_title("Operations:");
 
 	if (gui_draw_button_fill(ICON_FA_PLUS)) {

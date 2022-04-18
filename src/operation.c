@@ -19,3 +19,8 @@ bool operation_add_execution(operation_t* operation, machine_execution_t executi
 	list_push(&operation->executions, &execution, sizeof(execution));
 	return true;
 }
+
+
+bool operation_remove_execution(operation_t* operation, uint32_t index) {
+	return list_remove(&operation->executions, index);
+}

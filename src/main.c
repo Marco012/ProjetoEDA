@@ -36,26 +36,6 @@ void job_tests(job_t* job) {
 }
 
 
-void userAddOperationMachineToJob(job_t* job) {
-	machine_execution_t execution;
-
-	printf("Select an operation: \n");
-
-	uint32_t i = 1;
-	LIST_START_ITERATION((&job->operations), operation_t, operation) {
-		printf(" > %u\n", i);
-		i++;
-	}
-	LIST_END_ITERATION;
-
-	printf("--New operation--\n");
-	printf(" > Machine: ");
-	scanf("%" SCNu16, &execution.machine);
-	printf(" > Duration: ");
-	scanf("%" SCNu16, &execution.duration);
-}
-
-
 void ui_draw(window_t* window) {
 	float menu_width = 200;
 
@@ -132,11 +112,9 @@ int main(void) {
 	print_job_finish_max_time(&job);
 	print_job_finish_operation_average_time(&job, 0);
 
-	userAddOperationMachineToJob(&job);
-
 	test_print_job_operations(&job);
 
-	job_save_file(&job, "out.csv");
+	//job_save_file(&job, "out.csv");
 
 	job_clear(&job);
 

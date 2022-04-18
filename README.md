@@ -10,7 +10,7 @@ This project uses OpenGL for rendering.
 
 ## Compile
 ### Linux
-1 - Crate a build folder and use CMake to build the project with:
+1 - Create a build folder and use CMake to build the project with:
 ```sh
 mkdir build
 cd build

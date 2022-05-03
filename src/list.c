@@ -104,7 +104,7 @@ static void list_free_element(list_t* list, list_element_t* element) {
 	else
 		free(element->value);
 
-	free((void*)element);
+	free(element);
 }
 
 
@@ -132,7 +132,7 @@ bool list_remove(list_t* list, int index) {
 		list->last = previous;
 
 	if (previous != NULL)
-		previous->next = element->next;
+		previous->next = next;
 
 	list_free_element(list, element);
 

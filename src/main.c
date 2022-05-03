@@ -71,7 +71,10 @@ void open_main_window() {
 }
 
 
+
 int main(void) {
+
+	jobs_init();
 
 	// Register all the views being used.
 	view_register_jobs();
@@ -85,7 +88,8 @@ int main(void) {
 
 	open_main_window();
 
-	job_clear(&job);
+
+	jobs_clear();
 
 	return 0;
 }

@@ -6,6 +6,7 @@
 static void job_operation_free(void *value) {
 	operation_t *operation = (operation_t*) value;
 	list_clear(&operation->executions);
+	free(operation);
 }
 
 

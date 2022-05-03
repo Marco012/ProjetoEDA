@@ -8,6 +8,12 @@
 
 
 /**
+ * @brief Inits the job manager system.
+*/
+void jobs_init();
+
+
+/**
  * @brief Get the list containing all the jobs.
  * @return The list containing all the jobs. The returned list is not a copy. Avoid making changes to it.
 */
@@ -18,5 +24,11 @@ list_t* jobs_get_all();
  * @param job Job to add.
 */
 void jobs_insert(job_t* job);
+
+
+/**
+ * @brief Clears the jobs list.
+*/
+void jobs_clear();
 
 #endif

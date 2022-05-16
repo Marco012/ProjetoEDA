@@ -24,6 +24,7 @@
 #define VIEW_TITLE_MIN_TIME "Min Time"
 #define VIEW_TITLE_MAX_TIME "Max Time"
 #define VIEW_TITLE_AVERAGE_TIME "Average Time"
+#define VIEW_TITLE_ESCALATION "Escalation"
 
 
 void view_open_jobs();
@@ -37,5 +38,9 @@ void view_register_max_time();
 
 void view_open_min_time(job_t* job);
 void view_register_min_time();
+
+
+void view_open_escalation();
+void view_register_escalation();
 
 #endif

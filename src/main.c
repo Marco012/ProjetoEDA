@@ -9,8 +9,59 @@
 #include <inttypes.h>
 #include <gui/gui.h>
 
+#include "cJSON.h"
+
 
 #define MENU_WIDTH 200
+
+
+void load_json() {
+	FILE* ptr = fopen("jobs.json", "r"); // read only 
+	char ch;
+	char data[100000];
+
+	int i = 0;
+	do {
+		ch = fgetc(ptr);
+		data[i] = ch;
+
+		// Checking if character is not EOF.
+		// If it is EOF stop eading.
+		i++;
+	} while (ch != EOF);
+
+	cJSON* monitor_json = cJSON_Parse(data);
+	const cJSON* jobJson = NULL;
+
+
+	cJSON_ArrayForEach(jobJson, monitor_json) {
+		job_t job = job_init();
+
+		cJSON* operationsJson = cJSON_GetObjectItemCaseSensitive(jobJson, "job");
+
+		cJSON* operationJson = NULL;
+		cJSON_ArrayForEach(operationJson, operationsJson) {
+			operation_t* operation = job_new_operation(&job);
+
+			cJSON* machinesJson = cJSON_GetObjectItemCaseSensitive(operationJson, "operations");
+			cJSON* machineJSON = NULL;
+
+			cJSON_ArrayForEach(machineJSON, machinesJson) {
+				cJSON* machine = cJSON_GetObjectItemCaseSensitive(machineJSON, "machine");
+				cJSON* duration = cJSON_GetObjectItemCaseSensitive(machineJSON, "duration");
+
+				machine_execution_t execution;
+				execution.duration = duration->valueint;
+				execution.machine = machine->valueint - 1;
+
+				operation_add_execution(operation, execution);
+			}
+		}
+
+		jobs_insert(&job);
+	}
+
+}
 
 
 void ui_draw(window_t* window) {
@@ -35,6 +86,11 @@ void ui_draw(window_t* window) {
 		if (gui_draw_button_fill(VIEW_TITLE_MAX_TIME)) {
 			job_t* job = list_get(jobs_get_all(), 0);
 			gui_open_view(VIEW_TITLE_MAX_TIME, job);
+		}
+
+		// Draws and handles the escalation button.
+		if (gui_draw_button_fill(VIEW_TITLE_ESCALATION)) {
+			view_open_escalation();
 		}
 
 		gui_draw_spacing();
@@ -76,15 +132,18 @@ int main(void) {
 
 	jobs_init();
 
+	load_json();
+
 	// Register all the views being used.
 	view_register_jobs();
 	view_register_job();
 	view_register_max_time();
 	view_register_min_time();
+	view_register_escalation();
 
-	job_t job = job_init();
-	job_load_file(&job, "job.csv");
-	jobs_insert(&job);
+	//job_t job = job_init();
+	//job_load_file(&job, "job.csv");
+	//jobs_insert(&job);
 
 	open_main_window();
 

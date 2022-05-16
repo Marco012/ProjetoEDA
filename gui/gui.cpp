@@ -32,6 +32,54 @@ bool gui_draw_button(char* text) {
 }
 
 
+void gui_get_window_pos(float* x, float* y) {
+	ImVec2 pos = ImGui::GetWindowPos();
+	*x = pos.x;
+	*y = pos.y;
+}
+
+
+float gui_get_window_width() {
+	return ImGui::GetWindowWidth();
+}
+
+
+void gui_get_cursor_pos(float* x, float* y) {
+    ImVec2 cursorPos = ImGui::GetMousePos();
+	*x = cursorPos.x;
+	*y = cursorPos.y;
+}
+
+
+void gui_draw_line(float min_x, float min_y, float max_x, float max_y, float thickness, float r, float g, float b, float alpha) {
+	ImDrawList* draw_list = ImGui::GetWindowDrawList();
+	const ImVec2 p = ImGui::GetCursorScreenPos();
+
+	draw_list->AddLine(ImVec2(min_x + p.x, min_y + p.y), ImVec2(max_x + p.x, max_y + p.y), ImColor(r, g, b, alpha), thickness);
+}
+
+
+void gui_draw_rect_rgb(float min_x, float min_y, float max_x, float max_y, float r, float g, float b, float alpha) {
+	ImDrawList* draw_list = ImGui::GetWindowDrawList();
+	const ImVec2 p = ImGui::GetCursorScreenPos();
+
+	draw_list->AddRectFilled(ImVec2(min_x + p.x, min_y + p.y), ImVec2(max_x + p.x, max_y + p.y), ImColor(r, g, b, alpha), 6.0f);
+	draw_list->AddRect(ImVec2(min_x + p.x, min_y + p.y), ImVec2(max_x + p.x, max_y + p.y), ImColor(r - 0.1f, g - 0.1f, b - 0.1f, alpha), 6.0f, 15, 3.0f);
+}
+
+
+void gui_draw_rect_hsv(float min_x, float min_y, float max_x, float max_y, int h, int s, int v, int alpha) {
+	float r, g, b = 0;
+	ImGui::ColorConvertHSVtoRGB(h / 360.0f, s / 100.0f, v / 100.0f, r, g, b);
+	gui_draw_rect_rgb(min_x, min_y, max_x, max_y, r, g, b, alpha / 256.0f);
+}
+
+
+void gui_set_cursor_pos(float x, float y) {
+	ImGui::SetCursorPos(ImVec2(x, y));
+}
+
+
 bool gui_draw_buttonW(char* text, float width) {
 	return ImGui::Button(text, ImVec2(width - WINDOW_PADDING_TOTAL, 0));
 }

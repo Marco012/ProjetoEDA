@@ -20,6 +20,17 @@ extern "C" {
 
 // Bascially, all the functions bellow are a wrapper to the ImGui API.
 
+float gui_get_window_width();
+
+void gui_get_window_pos(float* x, float* y);
+void gui_get_cursor_pos(float* x, float* y);
+
+void gui_draw_rect_rgb(float min_x, float min_y, float max_x, float max_y, float r, float g, float b, float alpha);
+void gui_draw_rect_hsv(float min_x, float min_y, float max_x, float max_y, int h, int s, int v, int alpha);
+void gui_draw_line(float min_x, float min_y, float max_x, float max_y, float thickness, float r, float g, float b, float alpha);
+
+void gui_set_cursor_pos(float x, float y);
+
 void gui_start_menu(void);
 void gui_end_menu(float width);
 
@@ -51,6 +62,7 @@ void gui_next_column(void);
 
 bool gui_start_page(char* title, bool* show);
 void gui_end_page(void);
+
 
 #ifdef __cplusplus
 }

@@ -82,7 +82,13 @@ static void* view_opening(view_t* view, void* param) {
 					machines[i] = empty;
 				else
 					continue;
-			}	
+			}
+		}
+
+		for (int i = 0; i < machines_count; i++) {
+
+			if (machines[i].end != -1)
+				continue;
 
 			operation_info_t fastest_operation = empty;
 
@@ -145,19 +151,19 @@ static void* view_opening(view_t* view, void* param) {
 			}
 		}
 
-		int next_ending_machine = 0;
+		int next_ending_machine = -1;
 		has_machines_working = false;
 		for (int i = 0; i < machines_count; i++) {
 			if (machines[i].end != -1) {
 				has_machines_working = true;
-				if (next_ending_machine == 0 || machines[i].end < next_ending_machine) {
+				if (next_ending_machine == -1 || machines[i].end < next_ending_machine) {
 					next_ending_machine = machines[i].end;
 				}
 			}
 		}
 
 		if (has_machines_working)
-			cur_duration = next_ending_machine;
+			cur_duration = next_ending_machine;		
 	}
 
 	ending = cur_duration;

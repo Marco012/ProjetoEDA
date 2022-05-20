@@ -23,18 +23,21 @@ typedef struct {
 
 int ending;
 int jobs_count = 0;
-int machines_count = 8;
-
+int machines_count = 0;
+int prev_machines_count = 0;
+int operations_count = 0;
 list_t machines_list;
+int* machines_ordering = NULL;
 
 
-static void* view_opening(view_t* view, void* param) {
-
+static void perform_escalation() {
 	list_t* jobs = jobs_get_all();
 	machines_list = list_init(NULL);
 
 	list_t temp_jobs = list_init(NULL);
 
+	machines_count = 0;
+	operations_count = 0;
 	jobs_count = 0;
 	LIST_START_ITERATION(jobs, job_t, job) {
 		int operation_id = 0;
@@ -50,9 +53,12 @@ static void* view_opening(view_t* view, void* param) {
 								.operation = operation_id
 				};
 				list_push(&temp_operation->executions, &operation_info, sizeof(operation_info_t));
+
+				if (execution->machine + 1 > machines_count)
+					machines_count = execution->machine + 1;
 			}
 			LIST_END_ITERATION;
-
+			operations_count++;
 			operation_id++;
 		}
 		LIST_END_ITERATION;
@@ -60,6 +66,19 @@ static void* view_opening(view_t* view, void* param) {
 		jobs_count++;
 	}
 	LIST_END_ITERATION;
+
+
+	if (prev_machines_count != machines_count) {
+		if (machines_ordering != NULL)
+			free(machines_ordering);
+
+		machines_ordering = malloc(sizeof(int) * machines_count);
+
+		for (int i = 0; i < machines_count; i++)
+			machines_ordering[i] = i;
+	}
+
+	prev_machines_count = machines_count;
 
 	operation_info_t* machines = malloc(sizeof(operation_info_t) * machines_count);
 	operation_info_t empty = {
@@ -85,7 +104,8 @@ static void* view_opening(view_t* view, void* param) {
 			}
 		}
 
-		for (int i = 0; i < machines_count; i++) {
+		for (int j = 0; j < machines_count; j++) {
+			int i = machines_ordering[j];
 
 			if (machines[i].end != -1)
 				continue;
@@ -163,12 +183,19 @@ static void* view_opening(view_t* view, void* param) {
 		}
 
 		if (has_machines_working)
-			cur_duration = next_ending_machine;		
+			cur_duration = next_ending_machine;
 	}
 
 	ending = cur_duration;
 
 	free(machines);
+
+	return NULL;
+}
+
+
+static void* view_opening(view_t* view, void* param) {
+	perform_escalation();
 
 	return NULL;
 }
@@ -180,16 +207,42 @@ static void view_render(view_t* view, void* param, void* data) {
 	float cursor_x, cursor_y;
 	float window_x, window_y;
 
-	gui_draw_text("Total duration: %d\n\n", ending);
+	gui_draw_text("Total duration: %d\t Total operations: %d\n\n", ending, operations_count);
 
-	int block_height = 40;
+	int block_height = 54;
 	int start_y = 60;
-	int margin_x = 80;
-	float width = gui_get_window_width() - 80 - 5;
+	int margin_x = 120;
+	float width = gui_get_window_width() - margin_x - 5;
+	char temp[32];
 
-	for (int i = 0; i < 8; i++) {
+	for (int i = 0; i < machines_count; i++) {
 		gui_set_cursor_pos(5, start_y + block_height * i + 10);
-		gui_draw_text("Machine %d", i + 1);
+		gui_draw_text("Machine %d", machines_ordering[i] + 1);
+		gui_set_cursor_pos(75, start_y + block_height * i);
+
+		if (i != 0) {
+			sprintf(temp, ICON_FA_ARROW_UP "##0%d", i);
+			if (gui_draw_button(temp))
+			{
+				int previous = machines_ordering[i - 1];
+				machines_ordering[i - 1] = machines_ordering[i];
+				machines_ordering[i] = previous;
+				perform_escalation();
+			}
+		}
+
+		gui_set_cursor_pos(75, start_y + block_height * i + 25);
+
+		if (i < machines_count - 1) {
+			sprintf(temp, ICON_FA_ARROW_DOWN "##1%d", i);
+			if (gui_draw_button(temp))
+			{
+				int next = machines_ordering[i + 1];
+				machines_ordering[i + 1] = machines_ordering[i];
+				machines_ordering[i] = next;
+				perform_escalation();
+			}
+		}
 	}
 
 	gui_get_window_pos(&window_x, &window_y);
@@ -204,10 +257,18 @@ static void view_render(view_t* view, void* param, void* data) {
 		float x = operation->end - operation->duration;
 		gui_set_cursor_pos(0, 0);
 
+		int machine_y = 0;
+
+		for (int j = 0; j < machines_count; j++)
+			if (machines_ordering[j] == operation->machine) {
+				machine_y = j;
+				break;
+			}
+
 		float min_x = x * width / ending + margin_x;
-		float min_y = start_y + block_height * operation->machine;
+		float min_y = start_y + block_height * machine_y;
 		float max_x = margin_x + (x + operation->duration) * width / ending;
-		float max_y = start_y + block_height * (operation->machine + 1);
+		float max_y = start_y + block_height * (machine_y + 1);
 
 		if (((min_x > cursor_x && max_x < cursor_x) || (min_x < cursor_x && max_x > cursor_x)) &&
 			((min_y > cursor_y && max_y < cursor_y) || (min_y < cursor_y && max_y > cursor_y))) {
@@ -218,7 +279,7 @@ static void view_render(view_t* view, void* param, void* data) {
 			gui_draw_rect_hsv(min_x, min_y, max_x, max_y, operation->job * 360 / jobs_count, 54, 34, 255);
 		}
 
-		gui_set_cursor_pos(x * width / ending + margin_x + 5, start_y + (block_height * operation->machine) + 1);
+		gui_set_cursor_pos(x * width / ending + margin_x + 5, start_y + (block_height * machine_y) + 1);
 		gui_draw_text("Job %d \nOp %d", operation->job + 1, operation->operation + 1);
 	}
 	LIST_END_ITERATION;
@@ -231,7 +292,7 @@ static void view_render(view_t* view, void* param, void* data) {
 
 	}
 
-	for (int i = 0; i < 32; i += 2) {
+	for (int i = 0; i < ending; i += 2) {
 		gui_set_cursor_pos(0, 0);
 		gui_draw_line(margin_x + i * width / ending, start_y, margin_x + i * width / ending, start_y + block_height * machines_count, 1.0f, 1, 1, 1, 0.1f);
 	}
@@ -243,6 +304,8 @@ static void view_closing(view_t* view, void* param, void* data) {
 
 	//list_clear(operations);
 	//free(operations);
+
+	list_clear(&machines_list);
 }
 
 

@@ -1,4 +1,5 @@
 #include <views.h>
+#include <windows.h>
 
 
 void view_open_escalation() {
@@ -30,55 +31,37 @@ list_t machines_list;
 int* machines_ordering = NULL;
 
 
-static void perform_escalation() {
+static int perform_escalation(list_t *machines_list, int* machines_ordering) {
 	list_t* jobs = jobs_get_all();
-	machines_list = list_init(NULL);
+
+	list_clear(machines_list);
 
 	list_t temp_jobs = list_init(NULL);
+	int job_id = 0;
 
-	machines_count = 0;
-	operations_count = 0;
-	jobs_count = 0;
 	LIST_START_ITERATION(jobs, job_t, job) {
 		int operation_id = 0;
-		job_id_t temp_job = { .job = job_init(), .id = jobs_count };
+		job_id_t temp_job = { .job = job_init(), .id = job_id };
 		LIST_START_ITERATION((&job->operations), operation_t, operation) {
 			operation_t* temp_operation = job_new_operation(&temp_job.job, operation->name);
 			LIST_START_ITERATION((&operation->executions), machine_execution_t, execution) {
 				operation_info_t operation_info = (operation_info_t){
 								.duration = execution->duration,
-								.job = jobs_count,
+								.job = job_id,
 								.machine = execution->machine,
 								.end = execution->duration,
 								.operation = operation_id
 				};
 				list_push(&temp_operation->executions, &operation_info, sizeof(operation_info_t));
-
-				if (execution->machine + 1 > machines_count)
-					machines_count = execution->machine + 1;
 			}
 			LIST_END_ITERATION;
-			operations_count++;
 			operation_id++;
 		}
 		LIST_END_ITERATION;
 		list_push(&temp_jobs, &temp_job, sizeof(temp_job));
-		jobs_count++;
+		job_id++;
 	}
 	LIST_END_ITERATION;
-
-
-	if (prev_machines_count != machines_count) {
-		if (machines_ordering != NULL)
-			free(machines_ordering);
-
-		machines_ordering = malloc(sizeof(int) * machines_count);
-
-		for (int i = 0; i < machines_count; i++)
-			machines_ordering[i] = i;
-	}
-
-	prev_machines_count = machines_count;
 
 	operation_info_t* machines = malloc(sizeof(operation_info_t) * machines_count);
 	operation_info_t empty = {
@@ -133,7 +116,7 @@ static void perform_escalation() {
 						if (execution->machine != i)
 							continue;
 
-						if (fastest_operation.end == -1 || fastest_operation.duration > execution->duration)
+						if (fastest_operation.end == -1 || fastest_operation.duration >= execution->duration)
 							fastest_operation = (operation_info_t){
 								.duration = execution->duration,
 								.job = execution->job,
@@ -156,7 +139,7 @@ static void perform_escalation() {
 				LIST_START_ITERATION((&temp_jobs), job_id_t, job) {
 					if (job->id == fastest_operation.job)
 					{
-						list_push(&machines_list, &fastest_operation, sizeof(fastest_operation));
+						list_push(machines_list, &fastest_operation, sizeof(fastest_operation));
 						job_remove_operation(&job->job, 0);
 
 						if (job->job.operations.first == NULL) {
@@ -186,16 +169,171 @@ static void perform_escalation() {
 			cur_duration = next_ending_machine;
 	}
 
-	ending = cur_duration;
-
+	list_clear(&temp_jobs);
 	free(machines);
 
-	return NULL;
+	return cur_duration;
+}
+
+
+static void perform_fast_escalation() {
+	list_t* jobs = jobs_get_all();
+	machines_count = 0;
+	operations_count = 0;
+	jobs_count = 0;
+
+	LIST_START_ITERATION(jobs, job_t, job) {
+		LIST_START_ITERATION((&job->operations), operation_t, operation) {
+			LIST_START_ITERATION((&operation->executions), machine_execution_t, execution) {
+				if (execution->machine + 1 > machines_count)
+					machines_count = execution->machine + 1;
+			}
+			LIST_END_ITERATION;
+			operations_count++;
+		}
+		LIST_END_ITERATION;
+		jobs_count++;
+	}
+	LIST_END_ITERATION;
+
+
+	if (prev_machines_count != machines_count) {
+		if (machines_ordering != NULL)
+			free(machines_ordering);
+
+		machines_ordering = malloc(sizeof(int) * machines_count);
+
+		for (int i = 0; i < machines_count; i++)
+			machines_ordering[i] = i;
+	}
+
+	prev_machines_count = machines_count;
+
+	ending = perform_escalation(&machines_list, machines_ordering);
+}
+
+
+static void recursive_find_best_machine(int sequence, int i, int* ending, list_t* machines_list, int* ordering) {
+
+	ordering[sequence] = i;
+
+	if (sequence == machines_count - 1) {
+		int local_ending = 0;
+		list_t local_machines = list_init(NULL);
+		int* local_ordering = malloc(sizeof(int) * machines_count);
+
+		memcpy(local_ordering, ordering, sizeof(int) * machines_count);
+
+		local_ending = perform_escalation(&local_machines, local_ordering);
+
+		if (local_ending < *ending || *ending == 0) {
+			*ending = local_ending;
+
+			for (int j = 0; j < machines_count; j++)
+				ordering[j] = local_ordering[j];
+
+			LIST_START_ITERATION((&local_machines), operation_info_t, operation) {
+				list_push(machines_list, operation, sizeof(operation_info_t));
+			}
+			LIST_END_ITERATION;
+		}
+
+		list_clear(&local_machines);
+		free(local_ordering);
+
+		return;
+	}
+
+	for (int j = 0; j < machines_count; j++) {
+
+		bool contains_machine = false;
+
+		for (int k = 0; k <= sequence; k++)
+			if (ordering[k] == j)
+				contains_machine = true;
+
+		if (!contains_machine)
+			recursive_find_best_machine(sequence + 1, j, ending, machines_list, ordering);
+	}
+}
+
+
+typedef struct {
+	int i;
+	int ending;
+	list_t machines_list;
+	int* ordering;
+} machine_sequence_data_t;
+
+
+DWORD WINAPI myThread(LPVOID lpParameter)
+{
+	machine_sequence_data_t* data = (DWORD*)lpParameter;
+
+	int ending_time = 0;
+	list_t machines = list_init(NULL);
+	int* ordering = malloc(sizeof(int) * machines_count);
+
+	recursive_find_best_machine(0, data->i, &ending_time, &machines, ordering);
+
+	free(data);
+
+	//recursive_find_best_machine(0, data->i, &data->ending, &data->machines_list, data->ordering);
+	printf("finished %d\n", ending_time);
+}
+
+
+static void find_best_machine_sequence() {
+	for (int i = 0; i < machines_count; i++)
+	{
+		int ending_time = 0;
+		list_t machines = list_init(NULL);
+		int* ordering = malloc(sizeof(int) * machines_count);
+
+		DWORD ThreadId;
+		HANDLE ThreadHandle;
+
+		machine_sequence_data_t* data = malloc(sizeof(machine_sequence_data_t));
+		data->i = i;
+		data->ending = 0;
+		data->machines_list = list_init(NULL);
+		data->ordering = ordering;
+
+		ThreadHandle = CreateThread(NULL, 0, myThread, data, 0, &ThreadId);
+		/* returns the thread identifier */
+		//if (ThreadHandle != NULL) {
+			/* now wait for the thread to finish */ //WaitForSingleObject(ThreadHandle, INFINITE);
+			/* close the thread handle */
+			//CloseHandle(ThreadHandle);
+			//printf("sum = %d\n", Sum);
+		//}
+
+		//recursive_find_best_machine(0, i, &ending_time, &machines, ordering);
+
+		/*
+		if (ending_time < ending) {
+			ending = ending_time;
+
+			memcpy(machines_ordering, ordering, sizeof(int) * machines_count);
+
+			LIST_START_ITERATION((&machines), operation_info_t, operation) {
+				list_push(&machines_list, operation, sizeof(operation_info_t));
+			}
+			LIST_END_ITERATION;
+		}
+		*/
+
+		//list_clear(&machines);
+		//free(ordering);
+	}
 }
 
 
 static void* view_opening(view_t* view, void* param) {
-	perform_escalation();
+	machines_list = list_init(NULL);
+	perform_fast_escalation();
+
+	find_best_machine_sequence();
 
 	return NULL;
 }
@@ -209,7 +347,7 @@ static void view_render(view_t* view, void* param, void* data) {
 
 	if (gui_draw_button(ICON_FA_REDO)) {
 		prev_machines_count = 0;
-		perform_escalation();
+		perform_fast_escalation();
 	}
 
 	gui_sameline();
@@ -234,7 +372,7 @@ static void view_render(view_t* view, void* param, void* data) {
 				int previous = machines_ordering[i - 1];
 				machines_ordering[i - 1] = machines_ordering[i];
 				machines_ordering[i] = previous;
-				perform_escalation();
+				perform_fast_escalation();
 			}
 		}
 
@@ -247,7 +385,7 @@ static void view_render(view_t* view, void* param, void* data) {
 				int next = machines_ordering[i + 1];
 				machines_ordering[i + 1] = machines_ordering[i];
 				machines_ordering[i] = next;
-				perform_escalation();
+				perform_fast_escalation();
 			}
 		}
 	}

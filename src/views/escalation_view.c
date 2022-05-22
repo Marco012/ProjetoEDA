@@ -43,7 +43,7 @@ static void perform_escalation() {
 		int operation_id = 0;
 		job_id_t temp_job = { .job = job_init(), .id = jobs_count };
 		LIST_START_ITERATION((&job->operations), operation_t, operation) {
-			operation_t* temp_operation = job_new_operation(&temp_job.job);
+			operation_t* temp_operation = job_new_operation(&temp_job.job, operation->name);
 			LIST_START_ITERATION((&operation->executions), machine_execution_t, execution) {
 				operation_info_t operation_info = (operation_info_t){
 								.duration = execution->duration,
@@ -207,7 +207,14 @@ static void view_render(view_t* view, void* param, void* data) {
 	float cursor_x, cursor_y;
 	float window_x, window_y;
 
+	if (gui_draw_button(ICON_FA_REDO)) {
+		prev_machines_count = 0;
+		perform_escalation();
+	}
+
+	gui_sameline();
 	gui_draw_text("Total duration: %d\t Total operations: %d\n\n", ending, operations_count);
+
 
 	int block_height = 54;
 	int start_y = 60;
@@ -284,17 +291,21 @@ static void view_render(view_t* view, void* param, void* data) {
 	}
 	LIST_END_ITERATION;
 
-	if (focused_operation != NULL) {
-		gui_set_cursor_pos(cursor_x, cursor_y + 40);
-		gui_draw_rect_rgb(15, -35, 120, 5, 0, 0, 0, 0.6f);
-		gui_set_cursor_pos(cursor_x + 20, cursor_y + 8);
-		gui_draw_text("Start time: %d\nDuration: %d", focused_operation->end - focused_operation->duration, focused_operation->duration);
-
-	}
-
 	for (int i = 0; i < ending; i += 2) {
 		gui_set_cursor_pos(0, 0);
 		gui_draw_line(margin_x + i * width / ending, start_y, margin_x + i * width / ending, start_y + block_height * machines_count, 1.0f, 1, 1, 1, 0.1f);
+	}
+
+	if (focused_operation != NULL) {
+		int x = cursor_x;
+
+		if (gui_get_window_width() - cursor_x < 120)
+			x -= 120;
+
+		gui_set_cursor_pos(x, cursor_y + 40);
+		gui_draw_rect_rgb(15, -65, 120, 5, 0, 0, 0, 0.6f);
+		gui_set_cursor_pos(x + 20, cursor_y - 23);
+		gui_draw_text("Job: %d\nOperation: %d\nStart time: %d\nDuration: %d", focused_operation->job + 1, focused_operation->operation + 1, focused_operation->end - focused_operation->duration, focused_operation->duration);
 	}
 }
 

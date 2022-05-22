@@ -22,9 +22,10 @@ job_t job_init();
  * @brief Creates a new operation in a job.
  * 
  * @param job Job to create the operation.
+ * @param name Designation of the operation.
  * @return operation_t* Created operation.
  */
-operation_t* job_new_operation(job_t* job);
+operation_t* job_new_operation(job_t* job, char* name);
 
 /**
  * @brief Removes an operation from a job on a given index.

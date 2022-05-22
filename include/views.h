@@ -17,6 +17,7 @@
 #define MARGIN_X_3() MARGIN_X(60)
 #define MARGIN_X_4() MARGIN_X(80)
 #define MARGIN_X_5() MARGIN_X(100)
+#define MARGIN_X_6() MARGIN_X(120)
 
 
 #define VIEW_TITLE_JOBS "Jobs"
@@ -30,7 +31,7 @@
 void view_open_jobs();
 void view_register_jobs();
 
-void view_open_job(job_t* job);
+void view_open_job(job_t* job, int id);
 void view_register_job();
 
 void view_open_max_time(job_t* job);

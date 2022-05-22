@@ -23,7 +23,7 @@ void test_print_job_operations(job_t* job) {
 
 
 void test_job_add_operation(job_t* job, uint32_t value_multiplier) {
-	operation_t* operation = job_new_operation(job);
+	operation_t* operation = job_new_operation(job, NULL);
 
 	machine_execution_t execution;
 	execution.duration = 10 * value_multiplier;

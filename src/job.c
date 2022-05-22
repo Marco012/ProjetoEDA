@@ -18,9 +18,18 @@ job_t job_init() {
 }
 
 
-operation_t* job_new_operation(job_t* job) {
+operation_t* job_new_operation(job_t* job, char* name) {
 	operation_t operation;
 	operation.executions = list_init(NULL);
+
+	operation.name[0] = 0;
+
+	if (name != NULL) {
+		int length = strlen(name);
+
+		length = length > OPERATION_NAME_LENGTH - 1 ? OPERATION_NAME_LENGTH - 1 : length;
+		strncat(operation.name, name, length);
+	}
 
 	return list_push(&job->operations, &operation, sizeof(operation));
 }
@@ -43,7 +52,7 @@ bool job_load_file(job_t* job, const char* file_name) {
 	if (file == NULL)
 		return false;
 
-	operation_t* operation = job_new_operation(job);
+	operation_t* operation = job_new_operation(job, NULL);
 
 	char buffer[256];
 
@@ -51,7 +60,7 @@ bool job_load_file(job_t* job, const char* file_name) {
 	while (fgets(buffer, 256, file)) {
 		// Check if it's creating a new operation.
 		if (buffer[0] == '-') {
-			operation = job_new_operation(job);
+			operation = job_new_operation(job, NULL);
 			continue;
 		}
 

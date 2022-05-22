@@ -12,7 +12,7 @@ include_directories("libs/glew/include")
 include_directories("libs/imgui")
 include_directories("include")
 
-file(GLOB_RECURSE imgui_src CONFIGURE_DEPENDS imgui/*.cpp imgui/*.h)
+file(GLOB_RECURSE imgui_src CONFIGURE_DEPENDS dialog/*.cpp imgui/*.cpp imgui/*.h)
 
 add_library(${PROJECT_NAME} "window.cpp" "gui.cpp" "view.cpp" "font_icons.cpp" "font.cpp" ${imgui_src})
 target_link_libraries(${PROJECT_NAME} PRIVATE ${LIBS})

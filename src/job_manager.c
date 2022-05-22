@@ -26,6 +26,11 @@ void jobs_insert(job_t* job) {
 }
 
 
+void jobs_remove(int id) {
+	list_remove(&jobs, id);
+}
+
+
 void jobs_clear() {
 	list_clear(&jobs);
 }

@@ -27,6 +27,13 @@ void jobs_insert(job_t* job);
 
 
 /**
+ * @brief Removes a job from the jobs list.
+ * @param id Id of the job to be removed.
+*/
+void jobs_remove(int id);
+
+
+/**
  * @brief Clears the jobs list.
 */
 void jobs_clear();

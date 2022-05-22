@@ -2,6 +2,7 @@
 #include <imgui/imgui.h>
 #include <GLFW/glfw3.h>
 #include <string>
+#include "dialog/ImGuiFileDialog.h"
 
 
 static GLFWwindow* g_window;
@@ -9,6 +10,38 @@ static GLFWwindow* g_window;
 
 void gui_init_draw(void* window) {
 	g_window = (GLFWwindow*) window;
+}
+
+
+void gui_open_load_file_dialog(char* key, char* title, char* filter) {
+	ImGuiFileDialog::Instance()->OpenDialog(key, title, filter, ".");
+	ImGuiFileDialog::Instance()->SetFileStyle(IGFD_FileStyleByTypeDir, "", ImVec4(1.0f, 1.0f, 1.0f, 0.5f), ICON_FA_FOLDER);
+	ImGuiFileDialog::Instance()->SetFileStyle(IGFD_FileStyleByTypeFile, "", ImVec4(0.5f, 1.0f, 0.9f, 0.5f), ICON_FA_FILE);
+}
+
+
+void gui_open_save_file_dialog(char* key, char* title, char* filter) {
+	ImGuiFileDialog::Instance()->OpenDialog(key, title, filter, ".", "", 1, nullptr, ImGuiFileDialogFlags_ConfirmOverwrite);
+	ImGuiFileDialog::Instance()->SetFileStyle(IGFD_FileStyleByTypeDir, "", ImVec4(1.0f, 1.0f, 1.0f, 0.5f), ICON_FA_FOLDER);
+	ImGuiFileDialog::Instance()->SetFileStyle(IGFD_FileStyleByTypeFile, "", ImVec4(0.5f, 1.0f, 0.9f, 0.5f), ICON_FA_FILE);
+}
+
+
+bool gui_render_file_dialog(char* key, char* file_path) {
+	bool done = false;
+
+	if (ImGuiFileDialog::Instance()->Display(key)) {
+		if (ImGuiFileDialog::Instance()->IsOk())
+		{
+			file_path[0] = 0;
+			sprintf(file_path, "%s", ImGuiFileDialog::Instance()->GetFilePathName().c_str());
+			done = true;
+		}
+
+		ImGuiFileDialog::Instance()->Close();
+	}
+
+	return done;
 }
 
 
@@ -124,6 +157,11 @@ void gui_draw_title_centered(const char* text) {
 
 void gui_draw_input_uint16(const char* text, uint16_t* value) {
 	ImGui::InputScalar(text, ImGuiDataType_U16, value);
+}
+
+
+void gui_draw_input_string(const char* text, char* value, int size) {
+	ImGui::InputText(text, value, size);
 }
 
 

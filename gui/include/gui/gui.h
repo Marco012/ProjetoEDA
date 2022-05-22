@@ -20,6 +20,10 @@ extern "C" {
 
 // Bascially, all the functions bellow are a wrapper to the ImGui API.
 
+void gui_open_load_file_dialog(char* key, char* title, char* filter);
+void gui_open_save_file_dialog(char* key, char* title, char* filter);
+bool gui_render_file_dialog(char* key, char* file_path);
+
 float gui_get_window_width();
 
 void gui_get_window_pos(float* x, float* y);
@@ -49,6 +53,7 @@ void gui_draw_title(const char* text);
 void gui_draw_title_centered(const char* text);
 
 void gui_draw_input_uint16(const char* text, uint16_t* value);
+void gui_draw_input_string(const char* text, char* value, int size);
 
 bool gui_draw_collapsing_header(const char* text);
 

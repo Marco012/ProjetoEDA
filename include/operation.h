@@ -6,6 +6,9 @@
 #include "list.h"
 
 
+#define OPERATION_NAME_LENGTH 32
+
+
 typedef struct {
 	uint16_t machine;
 	uint16_t duration;
@@ -14,6 +17,7 @@ typedef struct {
 
 typedef struct {
 	list_t executions;
+	char name[OPERATION_NAME_LENGTH];
 } operation_t;
 
 

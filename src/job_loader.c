@@ -52,9 +52,51 @@ void jobs_import_json(char* path) {
 
 		jobs_insert(&job);
 	}
+
+	cJSON_Delete(monitor_json);
 }
 
 
 void jobs_export_json(char* path) {
+	list_t* jobs = jobs_get_all();
+	cJSON* json_jobs = cJSON_CreateArray();
 
+	LIST_START_ITERATION(jobs, job_t, job) {
+		cJSON* json_job = cJSON_CreateObject();
+		cJSON* json_job_operations = cJSON_AddArrayToObject(json_job, "job");
+		LIST_START_ITERATION((&job->operations), operation_t, operation) {
+			cJSON* json_operation = cJSON_CreateObject();
+			cJSON* json_operation_machines = cJSON_AddArrayToObject(json_operation, "operations");
+
+			if (strlen(operation->name) > 0)
+			{
+				cJSON_AddItemToObject(json_operation, "name", cJSON_CreateString(operation->name));
+			}
+
+			LIST_START_ITERATION((&operation->executions), machine_execution_t, execution) {
+				cJSON* json_machine = cJSON_CreateObject();
+				cJSON_AddItemToObject(json_machine, "machine", cJSON_CreateNumber(execution->machine + 1));
+				cJSON_AddItemToObject(json_machine, "duration", cJSON_CreateNumber(execution->duration + 1));
+
+				cJSON_AddItemToArray(json_operation_machines, json_machine);
+
+			}
+			LIST_END_ITERATION;
+			cJSON_AddItemToArray(json_job_operations, json_operation);
+
+		}
+		LIST_END_ITERATION;
+		
+		cJSON_AddItemToArray(json_jobs, json_job);
+	}
+	LIST_END_ITERATION;
+
+	char* result = cJSON_Print(json_jobs);
+
+	FILE* file = fopen(path, "w");
+	fprintf(file, "%s", result);
+	fclose(file);
+
+	free(result);
+	cJSON_Delete(json_jobs);
 }

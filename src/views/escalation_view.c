@@ -1,6 +1,9 @@
 #include <views.h>
-#include <windows.h>
 
+
+#define POPUP_FINISHED_MULTITHREAD_ESCALATION "Escalation finished"
+#define POPUP_SEARCHING_MULTITHREAD_ESCALATION "Finding best machine sequence"
+#define POPUP_MULTITHREAD_ESCALATION_NOT_AVAILABLE "Multithreaded escalation is only available on Windows"
 
 void view_open_escalation() {
 	gui_open_view(VIEW_TITLE_ESCALATION, NULL);
@@ -29,6 +32,11 @@ int prev_machines_count = 0;
 int operations_count = 0;
 list_t machines_list;
 int* machines_ordering = NULL;
+
+/* Used for searching best machine sequence multi-threaded. */
+static int g_finished_machines_thread_count = 0;
+static bool g_is_finding_machines = false;
+static int g_current_machines_found = 0;
 
 
 static int perform_escalation(list_t *machines_list, int* machines_ordering) {
@@ -215,6 +223,9 @@ static void perform_fast_escalation() {
 
 static void recursive_find_best_machine(int sequence, int i, int* ending, list_t* machines_list, int* ordering) {
 
+	if (!g_is_finding_machines)
+		return;
+
 	ordering[sequence] = i;
 
 	if (sequence == machines_count - 1) {
@@ -232,6 +243,8 @@ static void recursive_find_best_machine(int sequence, int i, int* ending, list_t
 			for (int j = 0; j < machines_count; j++)
 				ordering[j] = local_ordering[j];
 
+			list_clear(machines_list);
+
 			LIST_START_ITERATION((&local_machines), operation_info_t, operation) {
 				list_push(machines_list, operation, sizeof(operation_info_t));
 			}
@@ -240,6 +253,7 @@ static void recursive_find_best_machine(int sequence, int i, int* ending, list_t
 
 		list_clear(&local_machines);
 		free(local_ordering);
+		g_current_machines_found++;
 
 		return;
 	}
@@ -260,10 +274,14 @@ static void recursive_find_best_machine(int sequence, int i, int* ending, list_t
 
 typedef struct {
 	int i;
-	int ending;
-	list_t machines_list;
-	int* ordering;
 } machine_sequence_data_t;
+
+static bool lock = false;
+
+
+#ifdef _WIN32
+// Required for threading.
+#include <windows.h>
 
 
 DWORD WINAPI myThread(LPVOID lpParameter)
@@ -276,44 +294,17 @@ DWORD WINAPI myThread(LPVOID lpParameter)
 
 	recursive_find_best_machine(0, data->i, &ending_time, &machines, ordering);
 
-	free(data);
-
-	//recursive_find_best_machine(0, data->i, &data->ending, &data->machines_list, data->ordering);
-	printf("finished %d\n", ending_time);
-}
-
-
-static void find_best_machine_sequence() {
-	for (int i = 0; i < machines_count; i++)
+	if (g_is_finding_machines)
 	{
-		int ending_time = 0;
-		list_t machines = list_init(NULL);
-		int* ordering = malloc(sizeof(int) * machines_count);
+		while (lock) {
+			Sleep(1);
+		}
+		lock = true;
 
-		DWORD ThreadId;
-		HANDLE ThreadHandle;
-
-		machine_sequence_data_t* data = malloc(sizeof(machine_sequence_data_t));
-		data->i = i;
-		data->ending = 0;
-		data->machines_list = list_init(NULL);
-		data->ordering = ordering;
-
-		ThreadHandle = CreateThread(NULL, 0, myThread, data, 0, &ThreadId);
-		/* returns the thread identifier */
-		//if (ThreadHandle != NULL) {
-			/* now wait for the thread to finish */ //WaitForSingleObject(ThreadHandle, INFINITE);
-			/* close the thread handle */
-			//CloseHandle(ThreadHandle);
-			//printf("sum = %d\n", Sum);
-		//}
-
-		//recursive_find_best_machine(0, i, &ending_time, &machines, ordering);
-
-		/*
 		if (ending_time < ending) {
 			ending = ending_time;
 
+			list_clear(&machines_list);
 			memcpy(machines_ordering, ordering, sizeof(int) * machines_count);
 
 			LIST_START_ITERATION((&machines), operation_info_t, operation) {
@@ -321,21 +312,104 @@ static void find_best_machine_sequence() {
 			}
 			LIST_END_ITERATION;
 		}
-		*/
+		lock = false;
 
-		//list_clear(&machines);
-		//free(ordering);
+		g_finished_machines_thread_count++;
+	}
+	
+	free(ordering);
+	list_clear(&machines);
+	free(data);
+}
+
+
+static void find_best_machine_sequence() {
+
+	g_finished_machines_thread_count = 0;
+	g_is_finding_machines = true;
+	g_current_machines_found = 0;
+	lock = false;
+
+	for (int i = 0; i < machines_count; i++)
+	{
+		int ending_time = 0;
+		list_t machines = list_init(NULL);
+		int* ordering = malloc(sizeof(int) * machines_count);
+
+		DWORD thread_id;
+		HANDLE thread_handle;
+
+		machine_sequence_data_t* data = malloc(sizeof(machine_sequence_data_t));
+		data->i = i;
+
+		thread_handle = CreateThread(NULL, 0, myThread, data, 0, &thread_id);
 	}
 }
+
+#else
+
+static void find_best_machine_sequence() {
+	gui_open_popup(POPUP_MULTITHREAD_ESCALATION_NOT_AVAILABLE);
+}
+
+#endif
 
 
 static void* view_opening(view_t* view, void* param) {
 	machines_list = list_init(NULL);
 	perform_fast_escalation();
 
-	find_best_machine_sequence();
-
 	return NULL;
+}
+
+
+
+static void render_popup_finished_escalation() {
+
+	if (machines_count == 0)
+		return;
+
+	if (g_finished_machines_thread_count == machines_count) {
+		g_is_finding_machines = false;
+		gui_close_popup();
+		gui_open_popup(POPUP_FINISHED_MULTITHREAD_ESCALATION);
+		g_finished_machines_thread_count = 0;
+	}
+
+	if (g_is_finding_machines) {
+		gui_open_popup(POPUP_SEARCHING_MULTITHREAD_ESCALATION);
+	}
+
+	if (gui_begin_popup(POPUP_FINISHED_MULTITHREAD_ESCALATION)) {
+
+		if (gui_draw_button_fill("Ok"))
+			gui_close_popup();
+
+		gui_end_popup();
+	}
+	else if (gui_begin_popup(POPUP_SEARCHING_MULTITHREAD_ESCALATION)) {
+
+		int max = 1;
+
+		for (int i = 1; i <= machines_count; i++)
+			max *= i;
+
+		gui_draw_text("Machine sequences checked: %d/%d", g_current_machines_found, max);
+		gui_draw_text("Progress: %.1f%%", (g_current_machines_found / ((float)max)) * 100);
+
+		if (gui_draw_button_fill("Cancel")) {
+			g_is_finding_machines = false;
+			gui_close_popup();
+		}
+
+		gui_end_popup();
+	}
+	else if (gui_begin_popup(POPUP_MULTITHREAD_ESCALATION_NOT_AVAILABLE)) {
+		if (gui_draw_button_fill("Ok"))
+			gui_close_popup();
+
+		gui_end_popup();
+	}
 }
 
 
@@ -348,6 +422,12 @@ static void view_render(view_t* view, void* param, void* data) {
 	if (gui_draw_button(ICON_FA_REDO)) {
 		prev_machines_count = 0;
 		perform_fast_escalation();
+	}
+	
+	gui_sameline();
+
+	if (gui_draw_button("Find best machines sequence")) {
+		find_best_machine_sequence();
 	}
 
 	gui_sameline();
@@ -398,6 +478,8 @@ static void view_render(view_t* view, void* param, void* data) {
 
 	operation_info_t* focused_operation = NULL;
 
+	int k = 0;
+
 	LIST_START_ITERATION((&machines_list), operation_info_t, operation) {
 		float x = operation->end - operation->duration;
 		gui_set_cursor_pos(0, 0);
@@ -426,8 +508,11 @@ static void view_render(view_t* view, void* param, void* data) {
 
 		gui_set_cursor_pos(x * width / ending + margin_x + 5, start_y + (block_height * machine_y) + 1);
 		gui_draw_text("Job %d \nOp %d", operation->job + 1, operation->operation + 1);
+
+			k++;
 	}
 	LIST_END_ITERATION;
+	//printf("%d ", k);
 
 	for (int i = 0; i < ending; i += 2) {
 		gui_set_cursor_pos(0, 0);
@@ -445,6 +530,8 @@ static void view_render(view_t* view, void* param, void* data) {
 		gui_set_cursor_pos(x + 20, cursor_y - 23);
 		gui_draw_text("Job: %d\nOperation: %d\nStart time: %d\nDuration: %d", focused_operation->job + 1, focused_operation->operation + 1, focused_operation->end - focused_operation->duration, focused_operation->duration);
 	}
+
+	render_popup_finished_escalation();
 }
 
 

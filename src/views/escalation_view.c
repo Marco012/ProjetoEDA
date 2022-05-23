@@ -355,6 +355,40 @@ static void find_best_machine_sequence() {
 #endif
 
 
+/**
+ * @brief Exports the machines in YAML format.
+*/
+static void export_machines(char* path) {
+	FILE* file = fopen(path, "w");
+
+	list_t* machines = malloc(sizeof(list_t) * machines_count);
+
+	for (int i = 0; i < machines_count; i++)
+		machines[i] = list_init(NULL);
+	
+	LIST_START_ITERATION((&machines_list), operation_info_t, operation) {
+		list_push(&machines[operation->machine], operation, sizeof(operation_info_t));
+	}
+	LIST_END_ITERATION;
+
+	for (int i = 0; i < machines_count; i++)
+	{
+		fprintf(file, "- machine %d:\n", i + 1);
+
+		LIST_START_ITERATION((&machines[i]), operation_info_t, operation) {
+			fprintf(file, "    - %d:\n        duration: %d\n        job: %d\n        operation: %d\n", operation->end - operation->duration, operation->duration, operation->job + 1, operation->operation + 1);
+		}
+		LIST_END_ITERATION;
+	}
+	
+	for (int i = 0; i < machines_count; i++)
+		list_clear(&machines[i]);
+
+	free(machines);
+	fclose(file);
+}
+
+
 static void* view_opening(view_t* view, void* param) {
 	machines_list = list_init(NULL);
 	perform_fast_escalation();
@@ -425,10 +459,12 @@ static void view_render(view_t* view, void* param, void* data) {
 	}
 	
 	gui_sameline();
-
-	if (gui_draw_button("Find best machines sequence")) {
+	if (gui_draw_button("Find best machines sequence"))
 		find_best_machine_sequence();
-	}
+
+	gui_sameline();
+	if (gui_draw_button("Export"))
+		gui_open_save_file_dialog("DIALOG_EXPORT_EXCALATION", ICON_FA_SAVE " Export to a YAML file", ".yaml");
 
 	gui_sameline();
 	gui_draw_text("Total duration: %d\t Total operations: %d\n\n", ending, operations_count);
@@ -532,15 +568,14 @@ static void view_render(view_t* view, void* param, void* data) {
 	}
 
 	render_popup_finished_escalation();
+
+	char file_path[256];
+	if (gui_render_file_dialog("DIALOG_EXPORT_EXCALATION", file_path))
+		export_machines(file_path);
 }
 
 
 static void view_closing(view_t* view, void* param, void* data) {
-	//list_t* operations = (list_t*)data;
-
-	//list_clear(operations);
-	//free(operations);
-
 	list_clear(&machines_list);
 }
 

@@ -240,8 +240,7 @@ static void recursive_find_best_machine(int sequence, int i, int* ending, list_t
 		if (local_ending < *ending || *ending == 0) {
 			*ending = local_ending;
 
-			for (int j = 0; j < machines_count; j++)
-				ordering[j] = local_ordering[j];
+			memcpy(ordering, local_ordering, sizeof(int) * machines_count);
 
 			list_clear(machines_list);
 
@@ -371,8 +370,9 @@ static void export_machines(char* path) {
 	}
 	LIST_END_ITERATION;
 
-	for (int i = 0; i < machines_count; i++)
+	for (int j = 0; j < machines_count; j++)
 	{
+		int i = machines_ordering[j];
 		fprintf(file, "- machine %d:\n", i + 1);
 
 		LIST_START_ITERATION((&machines[i]), operation_info_t, operation) {

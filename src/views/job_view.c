@@ -2,7 +2,7 @@
 
 
 #define POPUP_TITLE_DELETE_OPERATON "Delete Operaton"
-#define POPUP_TITLE_RENAME_OPERATON "Rename Operaton"
+#define POPUP_TITLE_EDIT_OPERATON "Edit Operaton"
 #define POPUP_TITLE_DELETE_EXECUTION "Delete Execution"
 #define POPUP_TITLE_ADD_EXECUTION "Add Execution"
 #define POPUP_TITLE_EDIT_EXECUTION "Edit Execution"
@@ -21,6 +21,8 @@ typedef struct {
 	int id;
 } job_info_t;
 
+
+static int g_operations_count = 0;
 
 operation_t* selected_operation;
 int selected_index; // Used to store the id of operation and execution when deleting or editing.
@@ -47,12 +49,46 @@ static void view_closing(view_t* view, void* param, void* data) {
 }
 
 
+
+static void clone_operation(operation_t* dst, operation_t* src) {
+	memcpy(dst->name, src->name, OPERATION_NAME_LENGTH);
+	dst->executions = list_init(NULL);
+
+	LIST_START_ITERATION((&src->executions), machine_execution_t, execution) {
+		operation_add_execution(dst, *execution);
+	}
+	LIST_END_ITERATION;
+}
+
+
 char temp_name[OPERATION_NAME_LENGTH];
 
-static void render_popup_rename_operation() {
-	if (gui_begin_popup(POPUP_TITLE_RENAME_OPERATON)) {
+static void render_popup_edit_operation(job_t* job) {
+	operation_t new_operation;
+
+	if (gui_begin_popup(POPUP_TITLE_EDIT_OPERATON)) {
 		gui_draw_text("Name:");
 		gui_draw_input_string("##NAME", temp_name, OPERATION_NAME_LENGTH);
+
+		if (selected_index > 0) {
+			if (gui_draw_button(ICON_FA_ARROW_UP)) {
+				// Clone the current operation and inserts into the job.
+				clone_operation(&new_operation, selected_operation);
+				job_insert_operation(job, selected_index - 1, &new_operation);
+				job_remove_operation(job, selected_index + 1);
+				gui_close_popup();
+			}
+		}
+
+		if (selected_index < g_operations_count - 1) {
+			if (gui_draw_button(ICON_FA_ARROW_DOWN)) {
+				// Clone the current operation and inserts into the job.
+				clone_operation(&new_operation, selected_operation);
+				job_insert_operation(job, selected_index + 2, &new_operation);
+				job_remove_operation(job, selected_index);
+				gui_close_popup();
+			}
+		}
 
 		gui_columns(3);
 		if (gui_draw_button_fill("Ok"))
@@ -216,6 +252,7 @@ static void view_render(view_t* view, void* param, void* data) {
 
 	gui_draw_spacing();
 
+	g_operations_count = 0;
 	LIST_START_ITERATION((&job->operations), operation_t, operation) {
 
 		// Draws and handles the Delete Operation button.
@@ -230,7 +267,7 @@ static void view_render(view_t* view, void* param, void* data) {
 		gui_sameline();
 		sprintf(temp, ICON_FA_EDIT "##%d", i);
 		if (gui_draw_button(temp)) {
-			gui_open_popup(POPUP_TITLE_RENAME_OPERATON);
+			gui_open_popup(POPUP_TITLE_EDIT_OPERATON);
 			selected_index = i;
 			selected_operation = operation;
 			sprintf(temp_name, "%s", operation->name);
@@ -308,13 +345,8 @@ static void view_render(view_t* view, void* param, void* data) {
 				gui_draw_text("Average duration of %u possibilities: %u\n\n", j, operation_total_duration / j);
 			}
 		}
-
-		gui_sameline();
-		sprintf(temp, ICON_FA_EDIT "##%d", i);
-		if (gui_draw_button(temp)) {
-		}
-
 		i++;
+		g_operations_count++;
 	}
 	LIST_END_ITERATION;
 
@@ -331,7 +363,7 @@ static void view_render(view_t* view, void* param, void* data) {
 	operation_edit_error = EDIT_ERROR_NONE;
 
 	render_popup_delete_operation(job);
-	render_popup_rename_operation();
+	render_popup_edit_operation(job);
 	render_popup_delete_execution();
 	render_popup_add_or_edit_execution();
 	render_popup_execution_machine_error();

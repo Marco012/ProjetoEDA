@@ -40,6 +40,11 @@ void job_remove_operation(job_t* job, int index) {
 }
 
 
+void job_insert_operation(job_t* job, int index, operation_t* operation) {
+	list_insert(&job->operations, operation, sizeof(operation_t), index, false);
+}
+
+
 void job_set_operation(job_t* job, int index, operation_t operation) {
 	if (list_remove(&job->operations, index))
 		list_insert(&job->operations, &operation, sizeof(operation_t), index, false);

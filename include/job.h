@@ -35,6 +35,16 @@ operation_t* job_new_operation(job_t* job, char* name);
  */
 void job_remove_operation(job_t* job, int index);
 
+
+/**
+ * @brief Insert an operation at a specific index of a job.
+ * @param job Job to receive the operation.
+ * @param index Index to be placed the operation.
+ * @param operation Operation to be inserted into the job.
+*/
+void job_insert_operation(job_t* job, int index, operation_t* operation);
+
+
 /**
  * @brief Replaces an operation in a job on a given index.
  * 

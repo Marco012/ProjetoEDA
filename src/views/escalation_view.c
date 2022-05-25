@@ -27,7 +27,9 @@ typedef struct {
 
 int ending;
 int jobs_count = 0;
-int machines_count = 0;
+list_t g_machines;
+int g_machines_used_count = 0;
+int g_machines_count = 0;
 int prev_machines_count = 0;
 int operations_count = 0;
 list_t machines_list;
@@ -37,6 +39,27 @@ int* machines_ordering = NULL;
 static int g_finished_machines_thread_count = 0;
 static bool g_is_finding_machines = false;
 static int g_current_machines_found = 0;
+
+
+static inline bool machines_push_unique(int machine) {
+	if (!machines_contains(machine)) {
+		list_push(&g_machines, &machine, sizeof(int));
+		return true;
+	}
+
+	return false;
+}
+
+
+static inline bool machines_contains(int machine) {
+	LIST_START_ITERATION(&g_machines, int, m) {
+		if (*m == machine)
+			return true;
+	}
+	LIST_END_ITERATION;
+
+	return false;
+}
 
 
 static int perform_escalation(list_t *machines_list, int* machines_ordering) {
@@ -71,12 +94,12 @@ static int perform_escalation(list_t *machines_list, int* machines_ordering) {
 	}
 	LIST_END_ITERATION;
 
-	operation_info_t* machines = malloc(sizeof(operation_info_t) * machines_count);
+	operation_info_t* machines = malloc(sizeof(operation_info_t) * g_machines_used_count);
 	operation_info_t empty = {
 		.duration = -1, .job = -1, .machine = -1, .operation = -1, .end = -1
 	};
 
-	for (int i = 0; i < machines_count; i++)
+	for (int i = 0; i < g_machines_used_count; i++)
 		machines[i] = empty;
 
 	int cur_duration = 0;
@@ -84,7 +107,7 @@ static int perform_escalation(list_t *machines_list, int* machines_ordering) {
 
 	while (has_machines_working) {
 
-		for (int i = 0; i < machines_count; i++) {
+		for (int i = 0; i < g_machines_used_count; i++) {
 
 			if (machines[i].end != -1)
 			{
@@ -95,10 +118,10 @@ static int perform_escalation(list_t *machines_list, int* machines_ordering) {
 			}
 		}
 
-		for (int j = 0; j < machines_count; j++) {
+		for (int j = 0; j < g_machines_used_count; j++) {
 			int i = machines_ordering[j];
 
-			if (machines[i].end != -1)
+			if (machines[j].end != -1)
 				continue;
 
 			operation_info_t fastest_operation = empty;
@@ -109,8 +132,8 @@ static int perform_escalation(list_t *machines_list, int* machines_ordering) {
 				bool skip_job = false;
 
 				// Check if the job has any operation being processed by any machine.
-				for (int j = 0; j < machines_count; j++) {
-					if (machines[j].job == job->id) {
+				for (int j = 0; j < g_machines_used_count; j++) {
+					if (machines[machines_ordering[j]].job == job->id) {
 						skip_job = true;
 						break;
 					}
@@ -142,7 +165,7 @@ static int perform_escalation(list_t *machines_list, int* machines_ordering) {
 			LIST_END_ITERATION;
 
 			if (fastest_operation.end != -1) {
-				machines[i] = fastest_operation;
+				machines[j] = fastest_operation;
 				int job_id = 0;
 				LIST_START_ITERATION((&temp_jobs), job_id_t, job) {
 					if (job->id == fastest_operation.job)
@@ -164,7 +187,7 @@ static int perform_escalation(list_t *machines_list, int* machines_ordering) {
 
 		int next_ending_machine = -1;
 		has_machines_working = false;
-		for (int i = 0; i < machines_count; i++) {
+		for (int i = 0; i < g_machines_used_count; i++) {
 			if (machines[i].end != -1) {
 				has_machines_working = true;
 				if (next_ending_machine == -1 || machines[i].end < next_ending_machine) {
@@ -186,15 +209,21 @@ static int perform_escalation(list_t *machines_list, int* machines_ordering) {
 
 static void perform_fast_escalation() {
 	list_t* jobs = jobs_get_all();
-	machines_count = 0;
+	g_machines_used_count = 0;
 	operations_count = 0;
 	jobs_count = 0;
+	g_machines_count = 0;
+
+	list_clear(&g_machines);
 
 	LIST_START_ITERATION(jobs, job_t, job) {
 		LIST_START_ITERATION((&job->operations), operation_t, operation) {
 			LIST_START_ITERATION((&operation->executions), machine_execution_t, execution) {
-				if (execution->machine + 1 > machines_count)
-					machines_count = execution->machine + 1;
+				if (machines_push_unique(execution->machine))
+					g_machines_used_count++;
+
+				if (execution->machine + 1 > g_machines_count)
+					g_machines_count = execution->machine + 1;
 			}
 			LIST_END_ITERATION;
 			operations_count++;
@@ -205,17 +234,21 @@ static void perform_fast_escalation() {
 	LIST_END_ITERATION;
 
 
-	if (prev_machines_count != machines_count) {
+	if (prev_machines_count != g_machines_used_count) {
 		if (machines_ordering != NULL)
 			free(machines_ordering);
 
-		machines_ordering = malloc(sizeof(int) * machines_count);
+		machines_ordering = malloc(sizeof(int) * g_machines_used_count);
 
-		for (int i = 0; i < machines_count; i++)
-			machines_ordering[i] = i;
+		int i = 0;
+		LIST_START_ITERATION(&g_machines, int, machine) {
+			machines_ordering[i] = *machine;
+			i++;
+		}
+		LIST_END_ITERATION;
 	}
 
-	prev_machines_count = machines_count;
+	prev_machines_count = g_machines_used_count;
 
 	ending = perform_escalation(&machines_list, machines_ordering);
 }
@@ -228,19 +261,19 @@ static void recursive_find_best_machine(int sequence, int i, int* ending, list_t
 
 	ordering[sequence] = i;
 
-	if (sequence == machines_count - 1) {
+	if (sequence == g_machines_used_count - 1) {
 		int local_ending = 0;
 		list_t local_machines = list_init(NULL);
-		int* local_ordering = malloc(sizeof(int) * machines_count);
+		int* local_ordering = malloc(sizeof(int) * g_machines_used_count);
 
-		memcpy(local_ordering, ordering, sizeof(int) * machines_count);
+		memcpy(local_ordering, ordering, sizeof(int) * g_machines_used_count);
 
 		local_ending = perform_escalation(&local_machines, local_ordering);
 
 		if (local_ending < *ending || *ending == 0) {
 			*ending = local_ending;
 
-			memcpy(ordering, local_ordering, sizeof(int) * machines_count);
+			memcpy(ordering, local_ordering, sizeof(int) * g_machines_used_count);
 
 			list_clear(machines_list);
 
@@ -257,17 +290,17 @@ static void recursive_find_best_machine(int sequence, int i, int* ending, list_t
 		return;
 	}
 
-	for (int j = 0; j < machines_count; j++) {
+	LIST_START_ITERATION(&g_machines, int, machine) {
+			bool contains_machine = false;
 
-		bool contains_machine = false;
+			for (int k = 0; k <= sequence; k++)
+				if (ordering[k] == *machine)
+					contains_machine = true;
 
-		for (int k = 0; k <= sequence; k++)
-			if (ordering[k] == j)
-				contains_machine = true;
-
-		if (!contains_machine)
-			recursive_find_best_machine(sequence + 1, j, ending, machines_list, ordering);
+			if (!contains_machine)
+				recursive_find_best_machine(sequence + 1, *machine, ending, machines_list, ordering);
 	}
+	LIST_END_ITERATION;
 }
 
 
@@ -289,7 +322,7 @@ DWORD WINAPI myThread(LPVOID lpParameter)
 
 	int ending_time = 0;
 	list_t machines = list_init(NULL);
-	int* ordering = malloc(sizeof(int) * machines_count);
+	int* ordering = malloc(sizeof(int) * g_machines_used_count);
 
 	recursive_find_best_machine(0, data->i, &ending_time, &machines, ordering);
 
@@ -304,7 +337,7 @@ DWORD WINAPI myThread(LPVOID lpParameter)
 			ending = ending_time;
 
 			list_clear(&machines_list);
-			memcpy(machines_ordering, ordering, sizeof(int) * machines_count);
+			memcpy(machines_ordering, ordering, sizeof(int) * g_machines_used_count);
 
 			LIST_START_ITERATION((&machines), operation_info_t, operation) {
 				list_push(&machines_list, operation, sizeof(operation_info_t));
@@ -329,20 +362,17 @@ static void find_best_machine_sequence() {
 	g_current_machines_found = 0;
 	lock = false;
 
-	for (int i = 0; i < machines_count; i++)
-	{
-		int ending_time = 0;
-		list_t machines = list_init(NULL);
-		int* ordering = malloc(sizeof(int) * machines_count);
+	LIST_START_ITERATION(&g_machines, int, machine) {
 
 		DWORD thread_id;
 		HANDLE thread_handle;
 
 		machine_sequence_data_t* data = malloc(sizeof(machine_sequence_data_t));
-		data->i = i;
+		data->i = *machine;
 
 		thread_handle = CreateThread(NULL, 0, myThread, data, 0, &thread_id);
 	}
+	LIST_END_ITERATION;
 }
 
 #else
@@ -360,9 +390,9 @@ static void find_best_machine_sequence() {
 static void export_machines(char* path) {
 	FILE* file = fopen(path, "w");
 
-	list_t* machines = malloc(sizeof(list_t) * machines_count);
+	list_t* machines = malloc(sizeof(list_t) * g_machines_count);
 
-	for (int i = 0; i < machines_count; i++)
+	for (int i = 0; i < g_machines_count; i++)
 		machines[i] = list_init(NULL);
 	
 	LIST_START_ITERATION((&machines_list), operation_info_t, operation) {
@@ -370,9 +400,12 @@ static void export_machines(char* path) {
 	}
 	LIST_END_ITERATION;
 
-	for (int j = 0; j < machines_count; j++)
+	for (int j = 0; j < g_machines_used_count; j++)
 	{
 		int i = machines_ordering[j];
+		if (machines[i].first == NULL)
+			continue;
+
 		fprintf(file, "- machine %d:\n", i + 1);
 
 		LIST_START_ITERATION((&machines[i]), operation_info_t, operation) {
@@ -381,7 +414,7 @@ static void export_machines(char* path) {
 		LIST_END_ITERATION;
 	}
 	
-	for (int i = 0; i < machines_count; i++)
+	for (int i = 0; i < g_machines_count; i++)
 		list_clear(&machines[i]);
 
 	free(machines);
@@ -390,6 +423,7 @@ static void export_machines(char* path) {
 
 
 static void* view_opening(view_t* view, void* param) {
+	g_machines = list_init(NULL);
 	machines_list = list_init(NULL);
 	perform_fast_escalation();
 
@@ -400,10 +434,10 @@ static void* view_opening(view_t* view, void* param) {
 
 static void render_popup_finished_escalation() {
 
-	if (machines_count == 0)
+	if (g_machines_used_count == 0)
 		return;
 
-	if (g_finished_machines_thread_count == machines_count) {
+	if (g_finished_machines_thread_count == g_machines_used_count) {
 		g_is_finding_machines = false;
 		gui_close_popup();
 		gui_open_popup(POPUP_FINISHED_MULTITHREAD_ESCALATION);
@@ -425,7 +459,7 @@ static void render_popup_finished_escalation() {
 
 		int max = 1;
 
-		for (int i = 1; i <= machines_count; i++)
+		for (int i = 1; i <= g_machines_used_count; i++)
 			max *= i;
 
 		gui_draw_text("Machine sequences checked: %d/%d", g_current_machines_found, max);
@@ -476,35 +510,35 @@ static void view_render(view_t* view, void* param, void* data) {
 	float width = gui_get_window_width() - margin_x - 5;
 	char temp[32];
 
-	for (int i = 0; i < machines_count; i++) {
-		gui_set_cursor_pos(5, start_y + block_height * i + 10);
-		gui_draw_text("Machine %d", machines_ordering[i] + 1);
-		gui_set_cursor_pos(75, start_y + block_height * i);
+	for (int i = 0; i < g_machines_used_count; i++) {
+			gui_set_cursor_pos(5, start_y + block_height * i + 10);
+			gui_draw_text("Machine %d", machines_ordering[i] + 1);
+			gui_set_cursor_pos(75, start_y + block_height * i);
 
-		if (i != 0) {
-			sprintf(temp, ICON_FA_ARROW_UP "##0%d", i);
-			if (gui_draw_button(temp))
-			{
-				int previous = machines_ordering[i - 1];
-				machines_ordering[i - 1] = machines_ordering[i];
-				machines_ordering[i] = previous;
-				perform_fast_escalation();
+			if (i != 0) {
+				sprintf(temp, ICON_FA_ARROW_UP "##0%d", i);
+				if (gui_draw_button(temp))
+				{
+					int previous = machines_ordering[i - 1];
+					machines_ordering[i - 1] = machines_ordering[i];
+					machines_ordering[i] = previous;
+					perform_fast_escalation();
+				}
+			}
+
+			gui_set_cursor_pos(75, start_y + block_height * i + 25);
+
+			if (i < g_machines_used_count - 1) {
+				sprintf(temp, ICON_FA_ARROW_DOWN "##1%d", i);
+				if (gui_draw_button(temp))
+				{
+					int next = machines_ordering[i + 1];
+					machines_ordering[i + 1] = machines_ordering[i];
+					machines_ordering[i] = next;
+					perform_fast_escalation();
+				}
 			}
 		}
-
-		gui_set_cursor_pos(75, start_y + block_height * i + 25);
-
-		if (i < machines_count - 1) {
-			sprintf(temp, ICON_FA_ARROW_DOWN "##1%d", i);
-			if (gui_draw_button(temp))
-			{
-				int next = machines_ordering[i + 1];
-				machines_ordering[i + 1] = machines_ordering[i];
-				machines_ordering[i] = next;
-				perform_fast_escalation();
-			}
-		}
-	}
 
 	gui_get_window_pos(&window_x, &window_y);
 	gui_get_cursor_pos(&cursor_x, &cursor_y);
@@ -522,7 +556,7 @@ static void view_render(view_t* view, void* param, void* data) {
 
 		int machine_y = 0;
 
-		for (int j = 0; j < machines_count; j++)
+		for (int j = 0; j < g_machines_used_count; j++)
 			if (machines_ordering[j] == operation->machine) {
 				machine_y = j;
 				break;
@@ -552,7 +586,7 @@ static void view_render(view_t* view, void* param, void* data) {
 
 	for (int i = 0; i < ending; i += 2) {
 		gui_set_cursor_pos(0, 0);
-		gui_draw_line(margin_x + i * width / ending, start_y, margin_x + i * width / ending, start_y + block_height * machines_count, 1.0f, 1, 1, 1, 0.1f);
+		gui_draw_line(margin_x + i * width / ending, start_y, margin_x + i * width / ending, start_y + block_height * g_machines_used_count, 1.0f, 1, 1, 1, 0.1f);
 	}
 
 	if (focused_operation != NULL) {

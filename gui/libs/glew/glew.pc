@@ -1,6 +1,6 @@
-prefix=D:/IPCA/EDA/ProjetoEDA/out/install/x64-Debug
+prefix=E:/CProjects/ProjetoEDA/out/install/x64-Debug
 exec_prefix=${prefix}
-libdir=D:/IPCA/EDA/ProjetoEDA/out/install/x64-Debug/lib
+libdir=E:/CProjects/ProjetoEDA/out/install/x64-Debug/lib
 includedir=${prefix}/include
 
 Name: glew

@@ -15,7 +15,7 @@
  * value_name: Name of the variable being created to receive the value on each iteration.
  */
 #define LIST_START_ITERATION(list, type, value_name){                                   \
-    list_element_t* _list_element_next = list->first;                                   \
+    list_element_t* _list_element_next = (list)->first;                                 \
                                                                                         \
     while (_list_element_next != NULL) {                                                \
         type* value_name = (type*) _list_element_next->value;                           \

@@ -6,8 +6,12 @@
 #include "list.h"
 
 
+#define JOB_NAME_LENGTH 32
+
+
 typedef struct {
 	list_t operations;
+	char name[32];
 } job_t;
 
 

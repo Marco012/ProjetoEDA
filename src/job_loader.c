@@ -24,9 +24,11 @@ void jobs_import_json(char* path) {
 
 
 	cJSON_ArrayForEach(jobJson, monitor_json) {
-		job_t job = job_init();
 
 		cJSON* operationsJson = cJSON_GetObjectItemCaseSensitive(jobJson, "job");
+		cJSON* job_name = cJSON_GetObjectItemCaseSensitive(jobJson, "name");
+
+		job_t job = job_init(job_name == NULL ? NULL : job_name->valuestring);
 
 		cJSON* operationJson = NULL;
 		cJSON_ArrayForEach(operationJson, operationsJson) {
@@ -64,14 +66,16 @@ void jobs_export_json(char* path) {
 	LIST_START_ITERATION(jobs, job_t, job) {
 		cJSON* json_job = cJSON_CreateObject();
 		cJSON* json_job_operations = cJSON_AddArrayToObject(json_job, "job");
+
+		if (strlen(job->name) > 0)
+			cJSON_AddItemToObject(json_job, "name", cJSON_CreateString(job->name));
+
 		LIST_START_ITERATION((&job->operations), operation_t, operation) {
 			cJSON* json_operation = cJSON_CreateObject();
 			cJSON* json_operation_machines = cJSON_AddArrayToObject(json_operation, "operations");
 
 			if (strlen(operation->name) > 0)
-			{
 				cJSON_AddItemToObject(json_operation, "name", cJSON_CreateString(operation->name));
-			}
 
 			LIST_START_ITERATION((&operation->executions), machine_execution_t, execution) {
 				cJSON* json_machine = cJSON_CreateObject();

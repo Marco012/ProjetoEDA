@@ -1,9 +1,40 @@
 #include <views.h>
 
 #define POPUP_TITLE_DELETE_JOB "Delete Job"
+#define POPUP_TITLE_EDIT_JOB "Edit Job"
+#define STRING_JOB_TITLE(str, index) sprintf(str, "Job %d", index)
 
 
 int selected_index;
+char temp_name[JOB_NAME_LENGTH];
+job_t* editing_job;
+
+
+static void render_popup_edit_job() {
+	operation_t new_operation;
+
+	if (gui_begin_popup(POPUP_TITLE_EDIT_JOB)) {
+		gui_draw_text("Name:");
+		gui_draw_input_string("##NAME", temp_name, OPERATION_NAME_LENGTH);
+
+		gui_columns(3);
+		if (gui_draw_button_fill("Ok"))
+		{
+			sprintf(editing_job->name, "%s", temp_name);
+			gui_close_popup();
+		}
+		gui_next_column();
+		if (gui_draw_button_fill("Cancel"))
+			gui_close_popup();
+		gui_next_column();
+		if (gui_draw_button_fill("Reset")) {
+			editing_job->name[0] = 0;
+			gui_close_popup();
+		}
+
+		gui_end_popup();
+	}
+}
 
 
 static void render_popup_delete_job() {
@@ -49,11 +80,26 @@ static void view_render(view_t* view, void* data, void* param) {
 			gui_open_popup(POPUP_TITLE_DELETE_JOB);
 			selected_index = i - 1;
 		}
-		gui_sameline();
+
 
 		MARGIN_X_3();
+		gui_sameline();
+		sprintf(temp, ICON_FA_EDIT "##%d", i);
+		if (gui_draw_button(temp)) {
+			gui_open_popup(POPUP_TITLE_EDIT_JOB);
+			selected_index = i - 1;
+			editing_job = job;
+			sprintf(temp_name, "%s", job->name);
+		}
 
-		sprintf(temp, "Job %d", i);
+		gui_sameline();
+		MARGIN_X(105);
+
+
+		if (strlen(job->name) == 0)
+			STRING_JOB_TITLE(temp, i);
+		else
+			sprintf(temp, "%s", job->name);
 
 		if (gui_draw_button_fill(temp))
 			view_open_job(job, i - 1);
@@ -63,6 +109,7 @@ static void view_render(view_t* view, void* data, void* param) {
 	LIST_END_ITERATION;
 
 	render_popup_delete_job();
+	render_popup_edit_job();
 }
 
 

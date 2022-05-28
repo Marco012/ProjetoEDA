@@ -579,7 +579,7 @@ static void view_render(view_t* view, void* param, void* data) {
 		gui_set_cursor_pos(x * width / ending + margin_x + 5, start_y + (block_height * machine_y) + 1);
 		gui_draw_text("Job %d \nOp %d", operation->job + 1, operation->operation + 1);
 
-			k++;
+		k++;
 	}
 	LIST_END_ITERATION;
 	//printf("%d ", k);

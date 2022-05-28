@@ -10,9 +10,18 @@ static void job_operation_free(void *value) {
 }
 
 
-job_t job_init() {
+job_t job_init(char *name) {
 	job_t job;
 	job.operations = list_init(&job_operation_free);
+
+	job.name[0] = 0;
+
+	if (name != NULL)
+	{
+		int length = strlen(name);
+		length = length > OPERATION_NAME_LENGTH - 1 ? OPERATION_NAME_LENGTH - 1 : length;
+		strncat(job.name, name, length);
+	}
 
 	return job;
 }

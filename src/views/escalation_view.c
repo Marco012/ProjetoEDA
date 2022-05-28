@@ -147,7 +147,7 @@ static int perform_escalation(list_t *machines_list, int* machines_ordering) {
 						if (execution->machine != i)
 							continue;
 
-						if (fastest_operation.end == -1 || fastest_operation.duration >= execution->duration)
+						if (fastest_operation.end == -1 || fastest_operation.duration > execution->duration)
 							fastest_operation = (operation_info_t){
 								.duration = execution->duration,
 								.job = execution->job,

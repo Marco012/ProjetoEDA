@@ -25,15 +25,15 @@ typedef struct {
 } job_id_t;
 
 
-int ending;
-int jobs_count = 0;
+int g_ending_time;
+int g_jobs_count = 0;
 list_t g_machines;
 int g_machines_used_count = 0;
 int g_machines_count = 0;
-int prev_machines_count = 0;
-int operations_count = 0;
-list_t machines_list;
-int* machines_ordering = NULL;
+int g_prev_machines_count = 0;
+int g_operations_count = 0;
+list_t g_machines_list;
+int* g_machines_ordering = NULL;
 
 /* Used for searching best machine sequence multi-threaded. */
 static int g_finished_machines_thread_count = 0;
@@ -210,8 +210,8 @@ static int perform_escalation(list_t *machines_list, int* machines_ordering) {
 static void perform_fast_escalation() {
 	list_t* jobs = jobs_get_all();
 	g_machines_used_count = 0;
-	operations_count = 0;
-	jobs_count = 0;
+	g_operations_count = 0;
+	g_jobs_count = 0;
 	g_machines_count = 0;
 
 	list_clear(&g_machines);
@@ -226,31 +226,31 @@ static void perform_fast_escalation() {
 					g_machines_count = execution->machine + 1;
 			}
 			LIST_END_ITERATION;
-			operations_count++;
+			g_operations_count++;
 		}
 		LIST_END_ITERATION;
-		jobs_count++;
+		g_jobs_count++;
 	}
 	LIST_END_ITERATION;
 
 
-	if (prev_machines_count != g_machines_used_count) {
-		if (machines_ordering != NULL)
-			free(machines_ordering);
+	if (g_prev_machines_count != g_machines_used_count) {
+		if (g_machines_ordering != NULL)
+			free(g_machines_ordering);
 
-		machines_ordering = malloc(sizeof(int) * g_machines_used_count);
+		g_machines_ordering = malloc(sizeof(int) * g_machines_used_count);
 
 		int i = 0;
 		LIST_START_ITERATION(&g_machines, int, machine) {
-			machines_ordering[i] = *machine;
+			g_machines_ordering[i] = *machine;
 			i++;
 		}
 		LIST_END_ITERATION;
 	}
 
-	prev_machines_count = g_machines_used_count;
+	g_prev_machines_count = g_machines_used_count;
 
-	ending = perform_escalation(&machines_list, machines_ordering);
+	g_ending_time = perform_escalation(&g_machines_list, g_machines_ordering);
 }
 
 
@@ -316,7 +316,7 @@ static bool lock = false;
 #include <windows.h>
 
 
-DWORD WINAPI myThread(LPVOID lpParameter)
+DWORD WINAPI escalation_thread(LPVOID lpParameter)
 {
 	machine_sequence_data_t* data = (DWORD*)lpParameter;
 
@@ -333,14 +333,14 @@ DWORD WINAPI myThread(LPVOID lpParameter)
 		}
 		lock = true;
 
-		if (ending_time < ending) {
-			ending = ending_time;
+		if (ending_time < g_ending_time) {
+			g_ending_time = ending_time;
 
-			list_clear(&machines_list);
-			memcpy(machines_ordering, ordering, sizeof(int) * g_machines_used_count);
+			list_clear(&g_machines_list);
+			memcpy(g_machines_ordering, ordering, sizeof(int) * g_machines_used_count);
 
 			LIST_START_ITERATION((&machines), operation_info_t, operation) {
-				list_push(&machines_list, operation, sizeof(operation_info_t));
+				list_push(&g_machines_list, operation, sizeof(operation_info_t));
 			}
 			LIST_END_ITERATION;
 		}
@@ -370,7 +370,7 @@ static void find_best_machine_sequence() {
 		machine_sequence_data_t* data = malloc(sizeof(machine_sequence_data_t));
 		data->i = *machine;
 
-		thread_handle = CreateThread(NULL, 0, myThread, data, 0, &thread_id);
+		thread_handle = CreateThread(NULL, 0, escalation_thread, data, 0, &thread_id);
 	}
 	LIST_END_ITERATION;
 }
@@ -395,14 +395,14 @@ static void export_machines(char* path) {
 	for (int i = 0; i < g_machines_count; i++)
 		machines[i] = list_init(NULL);
 	
-	LIST_START_ITERATION((&machines_list), operation_info_t, operation) {
+	LIST_START_ITERATION((&g_machines_list), operation_info_t, operation) {
 		list_push(&machines[operation->machine], operation, sizeof(operation_info_t));
 	}
 	LIST_END_ITERATION;
 
 	for (int j = 0; j < g_machines_used_count; j++)
 	{
-		int i = machines_ordering[j];
+		int i = g_machines_ordering[j];
 		if (machines[i].first == NULL)
 			continue;
 
@@ -424,7 +424,7 @@ static void export_machines(char* path) {
 
 static void* view_opening(view_t* view, void* param) {
 	g_machines = list_init(NULL);
-	machines_list = list_init(NULL);
+	g_machines_list = list_init(NULL);
 	perform_fast_escalation();
 
 	return NULL;
@@ -488,7 +488,7 @@ static void view_render(view_t* view, void* param, void* data) {
 	float window_x, window_y;
 
 	if (gui_draw_button(ICON_FA_REDO)) {
-		prev_machines_count = 0;
+		g_prev_machines_count = 0;
 		perform_fast_escalation();
 	}
 	
@@ -501,7 +501,7 @@ static void view_render(view_t* view, void* param, void* data) {
 		gui_open_save_file_dialog("DIALOG_EXPORT_EXCALATION", ICON_FA_SAVE " Export to a YAML file", ".yaml");
 
 	gui_sameline();
-	gui_draw_text("Total duration: %d\t Total operations: %d\n\n", ending, operations_count);
+	gui_draw_text("Total duration: %d\t Total operations: %d\n\n", g_ending_time, g_operations_count);
 
 
 	int block_height = 54;
@@ -512,16 +512,16 @@ static void view_render(view_t* view, void* param, void* data) {
 
 	for (int i = 0; i < g_machines_used_count; i++) {
 			gui_set_cursor_pos(5, start_y + block_height * i + 10);
-			gui_draw_text("Machine %d", machines_ordering[i] + 1);
+			gui_draw_text("Machine %d", g_machines_ordering[i] + 1);
 			gui_set_cursor_pos(75, start_y + block_height * i);
 
 			if (i != 0) {
 				sprintf(temp, ICON_FA_ARROW_UP "##0%d", i);
 				if (gui_draw_button(temp))
 				{
-					int previous = machines_ordering[i - 1];
-					machines_ordering[i - 1] = machines_ordering[i];
-					machines_ordering[i] = previous;
+					int previous = g_machines_ordering[i - 1];
+					g_machines_ordering[i - 1] = g_machines_ordering[i];
+					g_machines_ordering[i] = previous;
 					perform_fast_escalation();
 				}
 			}
@@ -532,9 +532,9 @@ static void view_render(view_t* view, void* param, void* data) {
 				sprintf(temp, ICON_FA_ARROW_DOWN "##1%d", i);
 				if (gui_draw_button(temp))
 				{
-					int next = machines_ordering[i + 1];
-					machines_ordering[i + 1] = machines_ordering[i];
-					machines_ordering[i] = next;
+					int next = g_machines_ordering[i + 1];
+					g_machines_ordering[i + 1] = g_machines_ordering[i];
+					g_machines_ordering[i] = next;
 					perform_fast_escalation();
 				}
 			}
@@ -550,33 +550,33 @@ static void view_render(view_t* view, void* param, void* data) {
 
 	int k = 0;
 
-	LIST_START_ITERATION((&machines_list), operation_info_t, operation) {
+	LIST_START_ITERATION((&g_machines_list), operation_info_t, operation) {
 		float x = operation->end - operation->duration;
 		gui_set_cursor_pos(0, 0);
 
 		int machine_y = 0;
 
 		for (int j = 0; j < g_machines_used_count; j++)
-			if (machines_ordering[j] == operation->machine) {
+			if (g_machines_ordering[j] == operation->machine) {
 				machine_y = j;
 				break;
 			}
 
-		float min_x = x * width / ending + margin_x;
+		float min_x = x * width / g_ending_time + margin_x;
 		float min_y = start_y + block_height * machine_y;
-		float max_x = margin_x + (x + operation->duration) * width / ending;
+		float max_x = margin_x + (x + operation->duration) * width / g_ending_time;
 		float max_y = start_y + block_height * (machine_y + 1);
 
 		if (((min_x > cursor_x && max_x < cursor_x) || (min_x < cursor_x && max_x > cursor_x)) &&
 			((min_y > cursor_y && max_y < cursor_y) || (min_y < cursor_y && max_y > cursor_y))) {
-			gui_draw_rect_hsv(min_x, min_y, max_x, max_y, operation->job * 360 / jobs_count, 54, 50, 255);
+			gui_draw_rect_hsv(min_x, min_y, max_x, max_y, operation->job * 360 / g_jobs_count, 54, 50, 255);
 					focused_operation = operation;
 		}
 		else {
-			gui_draw_rect_hsv(min_x, min_y, max_x, max_y, operation->job * 360 / jobs_count, 54, 34, 255);
+			gui_draw_rect_hsv(min_x, min_y, max_x, max_y, operation->job * 360 / g_jobs_count, 54, 34, 255);
 		}
 
-		gui_set_cursor_pos(x * width / ending + margin_x + 5, start_y + (block_height * machine_y) + 1);
+		gui_set_cursor_pos(x * width / g_ending_time + margin_x + 5, start_y + (block_height * machine_y) + 1);
 		gui_draw_text("Job %d \nOp %d", operation->job + 1, operation->operation + 1);
 
 		k++;
@@ -584,9 +584,9 @@ static void view_render(view_t* view, void* param, void* data) {
 	LIST_END_ITERATION;
 	//printf("%d ", k);
 
-	for (int i = 0; i < ending; i += 2) {
+	for (int i = 0; i < g_ending_time; i += 2) {
 		gui_set_cursor_pos(0, 0);
-		gui_draw_line(margin_x + i * width / ending, start_y, margin_x + i * width / ending, start_y + block_height * g_machines_used_count, 1.0f, 1, 1, 1, 0.1f);
+		gui_draw_line(margin_x + i * width / g_ending_time, start_y, margin_x + i * width / g_ending_time, start_y + block_height * g_machines_used_count, 1.0f, 1, 1, 1, 0.1f);
 	}
 
 	if (focused_operation != NULL) {
@@ -610,7 +610,7 @@ static void view_render(view_t* view, void* param, void* data) {
 
 
 static void view_closing(view_t* view, void* param, void* data) {
-	list_clear(&machines_list);
+	list_clear(&g_machines_list);
 }
 
 

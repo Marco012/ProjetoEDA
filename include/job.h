@@ -11,7 +11,7 @@
 
 typedef struct {
 	list_t operations;
-	char name[32];
+	char name[JOB_NAME_LENGTH];
 } job_t;
 
 
@@ -20,7 +20,7 @@ typedef struct {
  * 
  * @return job_t Empty job ready to use.
  */
-job_t job_init();
+job_t job_init(char* name);
 
 /**
  * @brief Creates a new operation in a job.
@@ -59,7 +59,7 @@ void job_insert_operation(job_t* job, int index, operation_t* operation);
 void job_set_operation(job_t* job, int index, operation_t operation);
 
 /**
- * @brief Loads the operations in a file to a job. 
+ * @brief Loads the operations in a CSV file to a job. 
  * All the previous operations in the job will not be removed.
  * 
  * @param job Job to load the operations into.
@@ -70,7 +70,7 @@ void job_set_operation(job_t* job, int index, operation_t operation);
 bool job_load_file(job_t* job, const char* file_name);
 
 /**
- * @brief Saves all the operations in a job into a file.
+ * @brief Saves all the operations in a job into a CSV file.
  * 
  * @param job Job to save its operations.
  * @param file_name Name of the file to be saved.

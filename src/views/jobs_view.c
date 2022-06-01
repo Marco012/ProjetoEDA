@@ -66,7 +66,7 @@ static void view_render(view_t* view, void* data, void* param) {
 	int i = 1;
 
 	if (gui_draw_button_fill(ICON_FA_PLUS)) {
-		job_t new_job = job_init();
+		job_t new_job = job_init(NULL);
 		jobs_insert(&new_job);
 	}
 
@@ -99,7 +99,7 @@ static void view_render(view_t* view, void* data, void* param) {
 		if (strlen(job->name) == 0)
 			STRING_JOB_TITLE(temp, i);
 		else
-			sprintf(temp, "%s", job->name);
+			sprintf(temp, "%s##%d", job->name, i);
 
 		if (gui_draw_button_fill(temp))
 			view_open_job(job, i - 1);

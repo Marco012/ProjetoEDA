@@ -22,7 +22,7 @@ static void view_render(view_t* view, void* param, void* data) {
 	uint32_t total = 0;
 
 	LIST_START_ITERATION(operations, operation_execution_t, operation) {
-		gui_draw_text("Operation %u: machine: %u duration: %u\n", operation->operation_id, operation->execution.machine, operation->execution.duration);
+		gui_draw_text("Operation %u: machine: %u duration: %u\n", operation->operation_id, operation->execution.machine + 1, operation->execution.duration);
 		total += operation->execution.duration;
 	}
 	LIST_END_ITERATION;

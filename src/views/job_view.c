@@ -276,7 +276,7 @@ static void view_render(view_t* view, void* param, void* data) {
 		if (strlen(operation->name) == 0)
 			STRING_OPERATION_TITLE(temp, i);
 		else
-			sprintf(temp, "%s", operation->name);
+			sprintf(temp, "%s##%d", operation->name, i);
 
 		gui_sameline();
 		// Draws the collapsing header of the operation.

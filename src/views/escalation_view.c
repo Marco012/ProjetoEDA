@@ -72,7 +72,7 @@ static int perform_escalation(list_t *machines_list, int* machines_ordering) {
 
 	LIST_START_ITERATION(jobs, job_t, job) {
 		int operation_id = 0;
-		job_id_t temp_job = { .job = job_init(), .id = job_id };
+		job_id_t temp_job = { .job = job_init(NULL), .id = job_id };
 		LIST_START_ITERATION((&job->operations), operation_t, operation) {
 			operation_t* temp_operation = job_new_operation(&temp_job.job, operation->name);
 			LIST_START_ITERATION((&operation->executions), machine_execution_t, execution) {
@@ -132,8 +132,8 @@ static int perform_escalation(list_t *machines_list, int* machines_ordering) {
 				bool skip_job = false;
 
 				// Check if the job has any operation being processed by any machine.
-				for (int j = 0; j < g_machines_used_count; j++) {
-					if (machines[machines_ordering[j]].job == job->id) {
+				for (int k = 0; k < g_machines_used_count; k++) {
+					if (machines[machines_ordering[k]].job == job->id) {
 						skip_job = true;
 						break;
 					}
@@ -254,7 +254,7 @@ static void perform_fast_escalation() {
 }
 
 
-static void recursive_find_best_machine(int sequence, int i, int* ending, list_t* machines_list, int* ordering) {
+static void recursive_find_best_machine(int sequence, int i, int* ending, list_t* machines_list, int* ordering, int* best_ordering) {
 
 	if (!g_is_finding_machines)
 		return;
@@ -264,16 +264,13 @@ static void recursive_find_best_machine(int sequence, int i, int* ending, list_t
 	if (sequence == g_machines_used_count - 1) {
 		int local_ending = 0;
 		list_t local_machines = list_init(NULL);
-		int* local_ordering = malloc(sizeof(int) * g_machines_used_count);
 
-		memcpy(local_ordering, ordering, sizeof(int) * g_machines_used_count);
-
-		local_ending = perform_escalation(&local_machines, local_ordering);
+		local_ending = perform_escalation(&local_machines, ordering);
 
 		if (local_ending < *ending || *ending == 0) {
 			*ending = local_ending;
 
-			memcpy(ordering, local_ordering, sizeof(int) * g_machines_used_count);
+			memcpy(best_ordering, ordering, sizeof(int) * g_machines_used_count);
 
 			list_clear(machines_list);
 
@@ -284,7 +281,6 @@ static void recursive_find_best_machine(int sequence, int i, int* ending, list_t
 		}
 
 		list_clear(&local_machines);
-		free(local_ordering);
 		g_current_machines_found++;
 
 		return;
@@ -298,7 +294,7 @@ static void recursive_find_best_machine(int sequence, int i, int* ending, list_t
 					contains_machine = true;
 
 			if (!contains_machine)
-				recursive_find_best_machine(sequence + 1, *machine, ending, machines_list, ordering);
+				recursive_find_best_machine(sequence + 1, *machine, ending, machines_list, ordering, best_ordering);
 	}
 	LIST_END_ITERATION;
 }
@@ -323,8 +319,9 @@ DWORD WINAPI escalation_thread(LPVOID lpParameter)
 	int ending_time = 0;
 	list_t machines = list_init(NULL);
 	int* ordering = malloc(sizeof(int) * g_machines_used_count);
+	int* best_ordering = malloc(sizeof(int) * g_machines_used_count);
 
-	recursive_find_best_machine(0, data->i, &ending_time, &machines, ordering);
+	recursive_find_best_machine(0, data->i, &ending_time, &machines, ordering, best_ordering);
 
 	if (g_is_finding_machines)
 	{
@@ -337,7 +334,7 @@ DWORD WINAPI escalation_thread(LPVOID lpParameter)
 			g_ending_time = ending_time;
 
 			list_clear(&g_machines_list);
-			memcpy(g_machines_ordering, ordering, sizeof(int) * g_machines_used_count);
+			memcpy(g_machines_ordering, best_ordering, sizeof(int) * g_machines_used_count);
 
 			LIST_START_ITERATION((&machines), operation_info_t, operation) {
 				list_push(&g_machines_list, operation, sizeof(operation_info_t));
@@ -349,6 +346,7 @@ DWORD WINAPI escalation_thread(LPVOID lpParameter)
 		g_finished_machines_thread_count++;
 	}
 	
+	free(best_ordering);
 	free(ordering);
 	list_clear(&machines);
 	free(data);
